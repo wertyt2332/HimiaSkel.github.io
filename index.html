@@ -2,581 +2,92 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Скелетный редактор формул</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#7c3aed">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Скелетные формулы</title>
+<script src="https://cdn.jsdelivr.net/npm/smiles-drawer@2.1.7/dist/smiles-drawer.min.js"></script>
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: Inter, -apple-system, system-ui, sans-serif; background: #f8fafc; color: #111827; overflow: hidden; }
-  .app { display: flex; flex-direction: column; height: 100vh; }
-  header { display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; background: #fff; border-bottom: 1px solid #e5e7eb; }
-  .brand { display: flex; align-items: center; gap: 12px; }
-  .logo { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #6366f1, #8b5cf6); border-radius: 10px; font-size: 22px; }
-  .title { font-size: 15px; font-weight: 700; }
-  .subtitle { font-size: 12px; color: #6b7280; }
-  .header-actions { display: flex; gap: 8px; }
-  button { font-family: inherit; font-size: 13px; font-weight: 500; padding: 8px 14px; border: 1px solid #e5e7eb; background: #fff; border-radius: 8px; cursor: pointer; transition: all .15s; color: #374151; }
-  button:hover { background: #f9fafb; border-color: #d1d5db; }
-  button.primary { background: #4f46e5; color: #fff; border-color: #4f46e5; }
-  button.primary:hover { background: #4338ca; }
-  button:disabled { opacity: .4; cursor: not-allowed; }
-  .toolbar { display: flex; gap: 20px; padding: 12px 20px; background: #fff; border-bottom: 1px solid #e5e7eb; flex-wrap: wrap; align-items: center; }
-  .group { display: flex; align-items: center; gap: 6px; }
-  .group-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: #9ca3af; margin-right: 4px; }
-  .tool.active, .el.active, .bond.active { background: #eef2ff; border-color: #a5b4fc; color: #4f46e5; }
-  .el { min-width: 38px; padding: 8px 8px; }
-  .bond { min-width: 38px; font-size: 16px; font-weight: 700; }
-  .formula-display { margin-left: auto; display: flex; align-items: center; gap: 10px; padding: 6px 14px; background: #f9fafb; border-radius: 8px; }
-  #formula { font-family: 'Cambria Math', 'Times New Roman', serif; font-size: 17px; font-weight: 600; color: #4f46e5; }
-  .canvas-wrap { flex: 1; position: relative; overflow: hidden; }
-  canvas { display: block; touch-action: none; cursor: crosshair; }
-  .hint { position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%); background: rgba(255,255,255,.95); backdrop-filter: blur(8px); border: 1px solid #e5e7eb; border-radius: 10px; padding: 8px 16px; font-size: 12px; color: #6b7280; pointer-events: none; white-space: nowrap; max-width: calc(100% - 32px); overflow: hidden; text-overflow: ellipsis; }
-</style>
-</head>
-<body>
-<div class="app">
-  <header>
-    <div class="brand">
-      <div class="logo">⚗️</div>
-      <div>
-        <div class="title">Скелетный редактор</div>
-        <div class="subtitle">Структурные формулы в один клик</div>
-      </div>
-    </div>
-    <div class="header-actions">
-      <button id="undoBtn" title="Отменить (Ctrl+Z)">↶</button>
-      <button id="redoBtn" title="Повторить (Ctrl+Shift+Z)">↷</button>
-      <button id="clearBtn">Очистить</button>
-      <button id="exportBtn" class="primary">Экспорт PNG</button>
-    </div>
-  </header>
+:root {
+  --primary: #7c3aed;
+  --primary-dark: #6d28d9;
+  --success: #10b981;
+  --error: #ef4444;
+  --bg: #f5f5f7;
+  --card: #fff;
+  --text: #1a1a1a;
+  --text-muted: #6b7280;
+  --border: #e5e7eb;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  background: var(--bg); color: var(--text);
+  overscroll-behavior: none; -webkit-user-select: none; user-select: none;
+}
+button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; font-size: inherit; }
+.screen { display: none; height: 100dvh; width: 100%; }
+.screen.active { display: flex; flex-direction: column; }
 
-  <div class="toolbar">
-    <div class="group">
-      <span class="group-label">Инструмент</span>
-      <button data-tool="draw" class="tool active">✏️ Рисовать</button>
-      <button data-tool="erase" class="tool">🧽 Стереть</button>
-    </div>
-    <div class="group">
-      <span class="group-label">Атом</span>
-      <button data-element="C" class="el active">C</button>
-      <button data-element="N" class="el">N</button>
-      <button data-element="O" class="el">O</button>
-      <button data-element="S" class="el">S</button>
-      <button data-element="P" class="el">P</button>
-      <button data-element="F" class="el">F</button>
-      <button data-element="Cl" class="el">Cl</button>
-      <button data-element="Br" class="el">Br</button>
-      <button data-element="I" class="el">I</button>
-    </div>
-    <div class="group">
-      <span class="group-label">Связь</span>
-      <button data-bond="1" class="bond active" title="Одинарная (1)">—</button>
-      <button data-bond="2" class="bond" title="Двойная (2)">=</button>
-      <button data-bond="3" class="bond" title="Тройная (3)">≡</button>
-    </div>
-    <div class="formula-display">
-      <span class="group-label">Формула</span>
-      <span id="formula">—</span>
-    </div>
-  </div>
+/* ===== MENU ===== */
+#menu-screen { padding: 16px; gap: 4px; overflow-y: auto; }
+h1 {
+  font-size: 26px; font-weight: 800; margin: 8px 0 4px;
+  background: linear-gradient(135deg, #7c3aed, #a855f7);
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+}
+.subtitle { color: var(--text-muted); font-size: 14px; margin: 0 0 8px; line-height: 1.4; }
+h2 { font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.6px; margin: 14px 0 8px; }
+.mode-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.mode-card {
+  background: var(--card); border: 2px solid var(--border); border-radius: 14px;
+  padding: 14px 10px; text-align: left; transition: all 0.15s;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.mode-card.active { border-color: var(--primary); background: #faf5ff; box-shadow: 0 0 0 4px rgba(124,58,237,0.1); }
+.mode-icon { font-size: 24px; }
+.mode-title { font-weight: 700; font-size: 14px; }
+.mode-desc { font-size: 11px; color: var(--text-muted); line-height: 1.3; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  padding: 8px 12px; border-radius: 20px; background: var(--card);
+  border: 1.5px solid var(--border); font-size: 13px; font-weight: 500; transition: all 0.15s;
+}
+.chip.active { background: var(--primary); color: white; border-color: var(--primary); }
+#start-btn {
+  padding: 16px; border-radius: 14px; background: var(--primary); color: white;
+  font-size: 17px; font-weight: 700; box-shadow: 0 4px 12px rgba(124,58,237,0.3);
+  transition: all 0.15s; margin-top: 20px;
+}
+#start-btn:active { transform: scale(0.98); background: var(--primary-dark); }
 
-  <main class="canvas-wrap">
-    <canvas id="canvas"></canvas>
-    <div class="hint">Клик — атом · Клик по атому — выбрать · Потяните от атома — связь · ПКМ — сменить элемент/связь · Esc — сброс</div>
-  </main>
-</div>
-
-<script>
-(() => {
-  const canvas = document.getElementById('canvas');
-  const ctx = canvas.getContext('2d');
-  const BOND_LEN = 42;
-  const SNAP = Math.PI / 6;
-  const VALENCE = { C:4, N:3, O:2, S:2, P:3, F:1, Cl:1, Br:1, I:1, H:1 };
-  const CYCLE_ELEMENTS = ['C','N','O','S','P','F','Cl','Br','I'];
-  const SUB = '₀₁₂₃₄₅₆₇₈₉';
-
-  let W = 0, H = 0;
-  let hover = null;
-  let drag = null;
-  let dirty = false;
-  let lastFormula = '';
-
-  const state = {
-    atoms: [], bonds: [], nextId: 1,
-    selected: null, element: 'C', bondOrder: 1, tool: 'draw'
-  };
-
-  let history = [];
-  let redoStack = [];
-
-  const subscript = n => String(n).split('').map(c => SUB[+c] || c).join('');
-
-  // ---------- модель ----------
-  function atomById(id) { return state.atoms.find(a => a.id === id) || null; }
-  function addAtom(x, y, el) {
-    const a = { id: state.nextId++, x, y, element: el || state.element };
-    state.atoms.push(a);
-    return a;
-  }
-  function addBond(a, b, order) {
-    if (a === b) return null;
-    const ex = state.bonds.find(x => (x.a === a && x.b === b) || (x.a === b && x.b === a));
-    if (ex) return ex;
-    const bond = { id: state.nextId++, a, b, order: order || state.bondOrder };
-    state.bonds.push(bond);
-    return bond;
-  }
-  function deleteAtom(id) {
-    state.atoms = state.atoms.filter(a => a.id !== id);
-    state.bonds = state.bonds.filter(b => b.a !== id && b.b !== id);
-    if (state.selected === id) state.selected = null;
-  }
-  function deleteBond(id) { state.bonds = state.bonds.filter(b => b.id !== id); }
-
-  function atomLabel(atom) {
-    if (atom.element === 'C') return '';
-    if (atom.element === 'H') return 'H';
-    const sum = state.bonds
-      .filter(b => b.a === atom.id || b.b === atom.id)
-      .reduce((s, b) => s + b.order, 0);
-    const v = VALENCE[atom.element] || 0;
-    const h = Math.max(0, v - sum);
-    let label = atom.element;
-    if (h === 1) label += 'H';
-    else if (h > 1) label += 'H' + subscript(h);
-    return label;
-  }
-
-  function molecularFormula() {
-    const counts = {};
-    for (const atom of state.atoms) {
-      counts[atom.element] = (counts[atom.element] || 0) + 1;
-      const sum = state.bonds
-        .filter(b => b.a === atom.id || b.b === atom.id)
-        .reduce((s, b) => s + b.order, 0);
-      const h = Math.max(0, (VALENCE[atom.element] || 0) - sum);
-      if (h > 0) counts['H'] = (counts['H'] || 0) + h;
-    }
-    const keys = Object.keys(counts);
-    if (!keys.length) return '';
-    let order;
-    if (counts['C']) {
-      order = ['C'];
-      if (counts['H']) order.push('H');
-      order.push(...keys.filter(e => e !== 'C' && e !== 'H').sort());
-    } else {
-      order = keys.sort();
-    }
-    return order.filter(e => counts[e]).map(e => e + (counts[e] > 1 ? counts[e] : '')).join('');
-  }
-
-  function updateFormulaDisplay() {
-    const f = molecularFormula();
-    if (f !== lastFormula) {
-      lastFormula = f;
-      document.getElementById('formula').textContent = f || '—';
-    }
-  }
-
-  // ---------- снап и хит-тесты ----------
-  function snapFrom(atom, x, y) {
-    const dx = x - atom.x, dy = y - atom.y;
-    if (Math.abs(dx) < 0.01 && Math.abs(dy) < 0.01) {
-      return { x: atom.x + BOND_LEN, y: atom.y };
-    }
-    const ang = Math.atan2(dy, dx);
-    const snapped = Math.round(ang / SNAP) * SNAP;
-    return {
-      x: atom.x + BOND_LEN * Math.cos(snapped),
-      y: atom.y + BOND_LEN * Math.sin(snapped)
-    };
-  }
-
-  function findAtomAt(x, y) {
-    for (let i = state.atoms.length - 1; i >= 0; i--) {
-      const a = state.atoms[i];
-      if (Math.hypot(a.x - x, a.y - y) < 16) return a;
-    }
-    return null;
-  }
-
-  function distToSegment(px, py, x1, y1, x2, y2) {
-    const dx = x2 - x1, dy = y2 - y1;
-    const len2 = dx*dx + dy*dy;
-    if (len2 === 0) return Math.hypot(px - x1, py - y1);
-    let t = ((px - x1) * dx + (py - y1) * dy) / len2;
-    t = Math.max(0, Math.min(1, t));
-    return Math.hypot(px - (x1 + t*dx), py - (y1 + t*dy));
-  }
-
-  function findBondAt(x, y) {
-    for (const b of state.bonds) {
-      const A = atomById(b.a), B = atomById(b.b);
-      if (!A || !B) continue;
-      if (distToSegment(x, y, A.x, A.y, B.x, B.y) < 7) return b;
-    }
-    return null;
-  }
-
-  // ---------- отрисовка ----------
-  function render() {
-    ctx.clearRect(0, 0, W, H);
-    for (const b of state.bonds) drawBond(b);
-    if (drag && drag.fromAtom && drag.moved) drawDragPreview();
-    for (const a of state.atoms) drawAtom(a);
-    updateFormulaDisplay();
-  }
-
-  function drawAtom(atom) {
-    const isSel = state.selected === atom.id;
-    const isHov = hover && hover.type === 'atom' && hover.id === atom.id;
-    if (isSel || isHov) {
-      const color = (state.tool === 'erase' && isHov)
-        ? 'rgba(239,68,68,.22)'
-        : (isSel ? 'rgba(99,102,241,.18)' : 'rgba(99,102,241,.08)');
-      ctx.beginPath();
-      ctx.arc(atom.x, atom.y, 16, 0, Math.PI*2);
-      ctx.fillStyle = color;
-      ctx.fill();
-    }
-    const label = atomLabel(atom);
-    if (!label) return;
-    ctx.font = '600 15px Inter, -apple-system, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillStyle = isSel ? '#4f46e5' : '#111827';
-    ctx.fillText(label, atom.x, atom.y);
-  }
-
-  function drawBond(bond) {
-    const A = atomById(bond.a), B = atomById(bond.b);
-    if (!A || !B) return;
-    const dx = B.x - A.x, dy = B.y - A.y;
-    const len = Math.hypot(dx, dy);
-    if (len < 1) return;
-    const ux = dx/len, uy = dy/len, nx = -uy, ny = ux;
-    const aPad = atomLabel(A) ? Math.min(15, len*0.35) : 0;
-    const bPad = atomLabel(B) ? Math.min(15, len*0.35) : 0;
-    const x1 = A.x + ux*aPad, y1 = A.y + uy*aPad;
-    const x2 = B.x - ux*bPad, y2 = B.y - uy*bPad;
-    const offs = bond.order === 1 ? [0] : bond.order === 2 ? [-3.5, 3.5] : [-5, 0, 5];
-    const isHov = hover && hover.type === 'bond' && hover.id === bond.id;
-    ctx.strokeStyle = isHov ? '#ef4444' : '#111827';
-    ctx.lineWidth = 2;
-    ctx.lineCap = 'round';
-    for (const o of offs) {
-      ctx.beginPath();
-      ctx.moveTo(x1 + nx*o, y1 + ny*o);
-      ctx.lineTo(x2 + nx*o, y2 + ny*o);
-      ctx.stroke();
-    }
-  }
-
-  function drawDragPreview() {
-    const from = drag.fromAtom;
-    const target = findAtomAt(drag.x, drag.y);
-    let end;
-    if (target && target.id !== from.id) end = { x: target.x, y: target.y };
-    else end = snapFrom(from, drag.x, drag.y);
-    const dx = end.x - from.x, dy = end.y - from.y;
-    const len = Math.hypot(dx, dy);
-    if (len < 1) return;
-    const ux = dx/len, uy = dy/len;
-    const pad = atomLabel(from) ? Math.min(15, len*0.35) : 0;
-    ctx.save();
-    ctx.setLineDash([6, 4]);
-    ctx.strokeStyle = 'rgba(99,102,241,.75)';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(from.x + ux*pad, from.y + uy*pad);
-    ctx.lineTo(end.x, end.y);
-    ctx.stroke();
-    ctx.restore();
-  }
-
-  // ---------- история ----------
-  function snapshot() {
-    return JSON.stringify({ atoms: state.atoms, bonds: state.bonds, nextId: state.nextId });
-  }
-  function restore(snap) {
-    const s = JSON.parse(snap);
-    state.atoms = s.atoms; state.bonds = s.bonds; state.nextId = s.nextId;
-    state.selected = null;
-  }
-  function persist() {
-    try { localStorage.setItem('chem-editor-v1', snapshot()); } catch(e) {}
-  }
-  function pushHistory() {
-    history.push(snapshot());
-    redoStack = [];
-    if (history.length > 100) history.shift();
-    persist();
-    updateButtons();
-  }
-  function undo() {
-    if (history.length < 2) return;
-    redoStack.push(history.pop());
-    restore(history[history.length - 1]);
-    updateButtons();
-    render();
-  }
-  function redo() {
-    if (!redoStack.length) return;
-    const s = redoStack.pop();
-    history.push(s);
-    restore(s);
-    updateButtons();
-    render();
-  }
-  function updateButtons() {
-    document.getElementById('undoBtn').disabled = history.length < 2;
-    document.getElementById('redoBtn').disabled = redoStack.length === 0;
-  }
-
-  // ---------- размер ----------
-  function resize() {
-    const rect = canvas.parentElement.getBoundingClientRect();
-    const dpr = window.devicePixelRatio || 1;
-    canvas.width = Math.floor(rect.width * dpr);
-    canvas.height = Math.floor(rect.height * dpr);
-    canvas.style.width = rect.width + 'px';
-    canvas.style.height = rect.height + 'px';
-    W = rect.width; H = rect.height;
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    render();
-  }
-
-  // ---------- события ----------
-  function getPos(e) {
-    const r = canvas.getBoundingClientRect();
-    return { x: e.clientX - r.left, y: e.clientY - r.top };
-  }
-
-  canvas.addEventListener('pointerdown', (e) => {
-    if (e.button !== 0) return;
-    canvas.setPointerCapture(e.pointerId);
-    const { x, y } = getPos(e);
-    const atom = findAtomAt(x, y);
-
-    if (state.tool === 'erase') {
-      if (atom) { deleteAtom(atom.id); pushHistory(); render(); }
-      else {
-        const b = findBondAt(x, y);
-        if (b) { deleteBond(b.id); pushHistory(); render(); }
-      }
-      return;
-    }
-
-    dirty = false;
-    drag = { fromAtom: atom, startX: x, startY: y, moved: false, x, y };
-  });
-
-  canvas.addEventListener('pointermove', (e) => {
-    const { x, y } = getPos(e);
-
-    if (drag) {
-      drag.x = x; drag.y = y;
-      if (!drag.moved && Math.hypot(x - drag.startX, y - drag.startY) > 5) {
-        drag.moved = true;
-      }
-      if (drag.moved) render();
-      return;
-    }
-
-    const atom = findAtomAt(x, y);
-    let nh = null;
-    if (atom) nh = { type: 'atom', id: atom.id };
-    else {
-      const b = findBondAt(x, y);
-      if (b) nh = { type: 'bond', id: b.id };
-    }
-    const changed = JSON.stringify(nh) !== JSON.stringify(hover);
-    hover = nh;
-    canvas.style.cursor = state.tool === 'erase'
-      ? (nh ? 'pointer' : 'default')
-      : (atom ? 'pointer' : 'crosshair');
-    if (changed) render();
-  });
-
-  canvas.addEventListener('pointerup', (e) => {
-    if (!drag) return;
-    const { x, y } = getPos(e);
-    const d = drag;
-    drag = null;
-
-    if (state.tool !== 'draw') { render(); return; }
-
-    if (d.fromAtom && d.moved) {
-      const target = findAtomAt(x, y);
-      if (target && target.id !== d.fromAtom.id) {
-        addBond(d.fromAtom.id, target.id);
-        state.selected = target.id;
-        dirty = true;
-      } else {
-        const pos = snapFrom(d.fromAtom, x, y);
-        const ex = findAtomAt(pos.x, pos.y);
-        if (ex && ex.id !== d.fromAtom.id) {
-          addBond(d.fromAtom.id, ex.id);
-          state.selected = ex.id;
-        } else {
-          const na = addAtom(pos.x, pos.y);
-          addBond(d.fromAtom.id, na.id);
-          state.selected = na.id;
-        }
-        dirty = true;
-      }
-    } else if (d.fromAtom && !d.moved) {
-      state.selected = (state.selected === d.fromAtom.id) ? null : d.fromAtom.id;
-    } else if (!d.fromAtom && !d.moved) {
-      const atom = findAtomAt(x, y);
-      if (atom) {
-        state.selected = atom.id;
-      } else if (findBondAt(x, y)) {
-        state.selected = null;
-      } else {
-        let pos = { x, y };
-        const sel = atomById(state.selected);
-        if (sel) pos = snapFrom(sel, x, y);
-        const ex = findAtomAt(pos.x, pos.y);
-        if (ex) {
-          if (sel && ex.id !== sel.id) {
-            addBond(sel.id, ex.id);
-            state.selected = ex.id;
-            dirty = true;
-          } else {
-            state.selected = ex.id;
-          }
-        } else {
-          const na = addAtom(pos.x, pos.y);
-          if (sel) addBond(sel.id, na.id);
-          state.selected = na.id;
-          dirty = true;
-        }
-      }
-    }
-
-    if (dirty) { pushHistory(); dirty = false; }
-    render();
-  });
-
-  canvas.addEventListener('pointercancel', () => { drag = null; render(); });
-
-  canvas.addEventListener('contextmenu', (e) => {
-    e.preventDefault();
-    const { x, y } = getPos(e);
-    const atom = findAtomAt(x, y);
-    if (atom) {
-      const i = CYCLE_ELEMENTS.indexOf(atom.element);
-      atom.element = CYCLE_ELEMENTS[(i + 1) % CYCLE_ELEMENTS.length];
-      pushHistory();
-      render();
-      return;
-    }
-    const b = findBondAt(x, y);
-    if (b) {
-      b.order = b.order % 3 + 1;
-      pushHistory();
-      render();
-    }
-  });
-
-  window.addEventListener('keydown', (e) => {
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
-      e.preventDefault();
-      e.shiftKey ? redo() : undo();
-      return;
-    }
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
-      e.preventDefault(); redo(); return;
-    }
-    if (e.key === 'Escape') { state.selected = null; render(); }
-    if ((e.key === 'Delete' || e.key === 'Backspace') && state.selected) {
-      deleteAtom(state.selected);
-      pushHistory();
-      render();
-    }
-    if (e.key === '1') setBondOrder(1);
-    if (e.key === '2') setBondOrder(2);
-    if (e.key === '3') setBondOrder(3);
-  });
-
-  // ---------- UI ----------
-  function setTool(t) {
-    state.tool = t;
-    document.querySelectorAll('.tool').forEach(b => b.classList.toggle('active', b.dataset.tool === t));
-    canvas.style.cursor = t === 'erase' ? 'default' : 'crosshair';
-  }
-  function setElement(el) {
-    state.element = el;
-    document.querySelectorAll('.el').forEach(b => b.classList.toggle('active', b.dataset.element === el));
-  }
-  function setBondOrder(o) {
-    state.bondOrder = o;
-    document.querySelectorAll('.bond').forEach(b => b.classList.toggle('active', +b.dataset.bond === o));
-  }
-
-  document.querySelectorAll('.tool').forEach(b => b.addEventListener('click', () => setTool(b.dataset.tool)));
-  document.querySelectorAll('.el').forEach(b => b.addEventListener('click', () => setElement(b.dataset.element)));
-  document.querySelectorAll('.bond').forEach(b => b.addEventListener('click', () => setBondOrder(+b.dataset.bond)));
-
-  document.getElementById('undoBtn').addEventListener('click', undo);
-  document.getElementById('redoBtn').addEventListener('click', redo);
-
-  document.getElementById('clearBtn').addEventListener('click', () => {
-    if (!state.atoms.length) return;
-    if (!confirm('Очистить холст?')) return;
-    state.atoms = []; state.bonds = []; state.selected = null;
-    pushHistory();
-    render();
-  });
-
-  document.getElementById('exportBtn').addEventListener('click', () => {
-    const tmp = document.createElement('canvas');
-    tmp.width = canvas.width; tmp.height = canvas.height;
-    const t = tmp.getContext('2d');
-    t.fillStyle = '#ffffff';
-    t.fillRect(0, 0, tmp.width, tmp.height);
-    t.drawImage(canvas, 0, 0);
-    const link = document.createElement('a');
-    link.download = 'formula.png';
-    link.href = tmp.toDataURL('image/png');
-    link.click();
-  });
-
-  // ---------- пример ----------
-  function loadExample() {
-    const cx = W * 0.5 - 40, cy = H * 0.5;
-    const c1 = addAtom(cx, cy, 'C');
-    const a2 = -Math.PI / 6;
-    const c2 = addAtom(cx + BOND_LEN*Math.cos(a2), cy + BOND_LEN*Math.sin(a2), 'C');
-    const a3 = Math.PI / 6;
-    const o  = addAtom(c2.x + BOND_LEN*Math.cos(a3), c2.y + BOND_LEN*Math.sin(a3), 'O');
-    addBond(c1.id, c2.id, 1);
-    addBond(c2.id, o.id, 1);
-    state.selected = null;
-  }
-
-  // ---------- старт ----------
-  resize();
-  const saved = localStorage.getItem('chem-editor-v1');
-  if (saved) {
-    try {
-      const s = JSON.parse(saved);
-      state.atoms = s.atoms || [];
-      state.bonds = s.bonds || [];
-      state.nextId = s.nextId || 1;
-    } catch (err) { loadExample(); }
-  } else {
-    loadExample();
-  }
-  history = [snapshot()];
-  updateButtons();
-  render();
-
-  window.addEventListener('resize', resize);
-})();
-</script>
-</body>
-</html>
+/* ===== TRAIN ===== */
+#train-screen { padding: 10px; gap: 8px; }
+.train-header { display: flex; align-items: center; gap: 10px; min-height: 40px; }
+.icon-btn {
+  width: 40px; height: 40px; border-radius: 50%; background: var(--card);
+  display: flex; align-items: center; justify-content: center; font-size: 20px;
+  flex-shrink: 0; box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+.stats { margin-left: auto; font-size: 13px; font-weight: 600; color: var(--text-muted); }
+.task-card {
+  background: linear-gradient(135deg, #7c3aed, #a855f7);
+  border-radius: 14px; padding: 10px 16px; color: white; text-align: center; flex-shrink: 0;
+}
+.task-label { font-size: 11px; opacity: 0.85; margin-bottom: 2px; }
+.task-name { font-size: 19px; font-weight: 700; line-height: 1.2; }
+#canvas-wrap {
+  width: 100%; aspect-ratio: 1; max-height: calc(100dvh - 330px);
+  position: relative; background: white; border-radius: 14px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06); overflow: hidden;
+  flex-shrink: 0; align-self: center;
+}
+#canvas-wrap canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: block; }
+#draw { touch-action: none; cursor: crosshair; }
+#overlay {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  pointer-events: none; opacity: 0; transition: opacity 0.3s;
+}
+#overlay.visible { opacity: 0.55; }
+.toolbar { display: flex; gap: 8px; justify-content: center
