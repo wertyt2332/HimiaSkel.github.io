@@ -90,4 +90,600 @@ h2 { font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform
   pointer-events: none; opacity: 0; transition: opacity 0.3s;
 }
 #overlay.visible { opacity: 0.55; }
-.toolbar { display: flex; gap: 8px; justify-content: center
+.toolbar { display: flex; gap: 8px; justify-content: center; }
+.tool-btn {
+  width: 44px; height: 44px; border-radius: 12px; background: var(--card);
+  display: flex; align-items: center; justify-content: center; font-size: 20px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06); transition: all 0.15s;
+}
+.tool-btn.active { background: var(--primary); color: white; transform: scale(1.05); }
+.actions { display: flex; gap: 8px; margin-top: auto; }
+.btn { flex: 1; padding: 14px 8px; border-radius: 12px; font-size: 15px; font-weight: 600; transition: all 0.15s; text-align: center; }
+.btn:active { transform: scale(0.97); }
+.btn-primary { background: var(--primary); color: white; box-shadow: 0 2px 8px rgba(124,58,237,0.25); }
+.btn-secondary { background: var(--card); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+.btn-success { background: var(--success); color: white; box-shadow: 0 2px 8px rgba(16,185,129,0.25); }
+.btn-error { background: var(--error); color: white; box-shadow: 0 2px 8px rgba(239,68,68,0.25); }
+.btn[hidden] { display: none; }
+</style>
+</head>
+<body>
+
+<!-- ===== MENU ===== -->
+<div class="screen active" id="menu-screen">
+  <h1>Скелетные формулы</h1>
+  <p class="subtitle">Тренируйся рисовать органические молекулы по названию ИЮПАК</p>
+
+  <h2>Режим</h2>
+  <div class="mode-cards">
+    <button class="mode-card active" data-mode="free">
+      <div class="mode-icon">✏️</div>
+      <div class="mode-title">Свободное</div>
+      <div class="mode-desc">Рисуй в своём темпе, сверяйся с ответом</div>
+    </button>
+    <button class="mode-card" data-mode="hybrid">
+      <div class="mode-icon">🎯</div>
+      <div class="mode-title">С проверкой</div>
+      <div class="mode-desc">Наложи ответ и оцени себя, следи за серией</div>
+    </button>
+  </div>
+
+  <h2>Категории</h2>
+  <div class="chips" id="chips"></div>
+
+  <button id="start-btn">Начать тренировку</button>
+</div>
+
+<!-- ===== TRAIN ===== -->
+<div class="screen" id="train-screen">
+  <div class="train-header">
+    <button class="icon-btn" id="back-btn">←</button>
+    <div class="stats" id="stats"></div>
+  </div>
+
+  <div class="task-card">
+    <div class="task-label">Нарисуй скелетную формулу:</div>
+    <div class="task-name" id="task-name">—</div>
+  </div>
+
+  <div id="canvas-wrap">
+    <canvas id="draw"></canvas>
+    <svg id="overlay" xmlns="http://www.w3.org/2000/svg"></svg>
+  </div>
+
+  <div class="toolbar">
+    <button class="tool-btn active" data-tool="pen">✏️</button>
+    <button class="tool-btn" data-tool="eraser">🧽</button>
+    <button class="tool-btn" id="undo-btn">↶</button>
+    <button class="tool-btn" id="clear-btn">🗑</button>
+  </div>
+
+  <div class="actions">
+    <button class="btn btn-secondary" id="answer-btn">Показать ответ</button>
+    <button class="btn btn-primary" id="next-btn">Далее</button>
+    <button class="btn btn-success" id="correct-btn" hidden>✓</button>
+    <button class="btn btn-error" id="wrong-btn" hidden>✗</button>
+  </div>
+</div>
+
+<script>
+/* ============ DATA ============ */
+const CLASSES = [
+  { key: 'alkanes',      label: 'Алканы' },
+  { key: 'cycloalkanes', label: 'Циклоалканы' },
+  { key: 'alkenes',      label: 'Алкены' },
+  { key: 'alkynes',      label: 'Алкины' },
+  { key: 'arenes',       label: 'Арены' },
+  { key: 'alcohols',     label: 'Спирты и фенолы' },
+  { key: 'aldehydes',    label: 'Альдегиды' },
+  { key: 'ketones',      label: 'Кетоны' },
+  { key: 'acids',        label: 'Карбоновые кислоты' },
+  { key: 'esters',       label: 'Сложные эфиры' },
+  { key: 'amines',       label: 'Амины' },
+  { key: 'halides',      label: 'Галогенопроизводные' },
+];
+
+const COMPOUNDS = {
+  alkanes: [
+    { name: 'Метан',                 smiles: 'C' },
+    { name: 'Этан',                  smiles: 'CC' },
+    { name: 'Пропан',                smiles: 'CCC' },
+    { name: 'Бутан',                 smiles: 'CCCC' },
+    { name: '2-Метилпропан',         smiles: 'CC(C)C' },
+    { name: 'Пентан',                smiles: 'CCCCC' },
+    { name: '2-Метилбутан',          smiles: 'CC(C)CC' },
+    { name: '2,2-Диметилпропан',     smiles: 'CC(C)(C)C' },
+    { name: 'Гексан',                smiles: 'CCCCCC' },
+    { name: '2-Метилпентан',         smiles: 'CC(C)CCC' },
+    { name: '3-Метилпентан',         smiles: 'CCC(C)CC' },
+    { name: '2,2-Диметилбутан',      smiles: 'CC(C)(C)CC' },
+    { name: '2,3-Диметилбутан',      smiles: 'CC(C)C(C)C' },
+    { name: 'Гептан',                smiles: 'CCCCCCC' },
+    { name: 'Октан',                 smiles: 'CCCCCCCC' },
+  ],
+  cycloalkanes: [
+    { name: 'Циклопропан',           smiles: 'C1CC1' },
+    { name: 'Циклобутан',            smiles: 'C1CCC1' },
+    { name: 'Циклопентан',           smiles: 'C1CCCC1' },
+    { name: 'Циклогексан',           smiles: 'C1CCCCC1' },
+    { name: 'Метилциклопропан',      smiles: 'CC1CC1' },
+    { name: 'Метилциклобутан',       smiles: 'CC1CCC1' },
+    { name: 'Метилциклопентан',      smiles: 'CC1CCCC1' },
+    { name: 'Метилциклогексан',      smiles: 'CC1CCCCC1' },
+    { name: '1,2-Диметилциклопропан',smiles: 'CC1CC1C' },
+    { name: '1,2-Диметилциклогексан',smiles: 'CC1CCCCC1C' },
+  ],
+  alkenes: [
+    { name: 'Этен',                  smiles: 'C=C' },
+    { name: 'Пропен',                smiles: 'CC=C' },
+    { name: 'Бутен-1',               smiles: 'C=CCC' },
+    { name: 'Бутен-2',               smiles: 'CC=CC' },
+    { name: '2-Метилпропен',         smiles: 'CC(=C)C' },
+    { name: 'Пентен-1',              smiles: 'C=CCCC' },
+    { name: 'Пентен-2',              smiles: 'CC=CCC' },
+    { name: '2-Метилбутен-2',        smiles: 'CC(=C)CC' },
+    { name: 'Гексен-1',              smiles: 'C=CCCCC' },
+    { name: 'Циклогексен',           smiles: 'C1=CCCCC1' },
+    { name: 'Бутадиен-1,3',          smiles: 'C=CC=C' },
+    { name: '2-Метилбутадиен-1,3 (изопрен)', smiles: 'CC(=C)C=C' },
+  ],
+  alkynes: [
+    { name: 'Этин',                  smiles: 'C#C' },
+    { name: 'Пропин',                smiles: 'CC#C' },
+    { name: 'Бутин-1',               smiles: 'C#CCC' },
+    { name: 'Бутин-2',               smiles: 'CC#CC' },
+    { name: 'Пентин-1',              smiles: 'C#CCCC' },
+    { name: 'Пентин-2',              smiles: 'CC#CCC' },
+    { name: 'Гексин-1',              smiles: 'C#CCCCC' },
+  ],
+  arenes: [
+    { name: 'Бензол',                smiles: 'c1ccccc1' },
+    { name: 'Толуол (метилбензол)',  smiles: 'Cc1ccccc1' },
+    { name: 'о-Ксилол (1,2-диметилбензол)', smiles: 'Cc1ccccc1C' },
+    { name: 'м-Ксилол (1,3-диметилбензол)', smiles: 'Cc1cccc(C)c1' },
+    { name: 'п-Ксилол (1,4-диметилбензол)', smiles: 'Cc1ccc(C)cc1' },
+    { name: 'Этилбензол',            smiles: 'CCc1ccccc1' },
+    { name: 'Стирол (винилбензол)',  smiles: 'C=Cc1ccccc1' },
+    { name: 'Нафталин',              smiles: 'c1ccc2ccccc2c1' },
+  ],
+  alcohols: [
+    { name: 'Метанол',               smiles: 'CO' },
+    { name: 'Этанол',                smiles: 'CCO' },
+    { name: 'Пропанол-1',            smiles: 'CCCO' },
+    { name: 'Пропанол-2',            smiles: 'CC(O)C' },
+    { name: 'Бутанол-1',             smiles: 'CCCCO' },
+    { name: 'Бутанол-2',             smiles: 'CCC(O)C' },
+    { name: '2-Метилпропанол-1',     smiles: 'CC(C)CO' },
+    { name: '2-Метилпропанол-2',     smiles: 'CC(C)(C)O' },
+    { name: 'Этандиол-1,2 (этиленгликоль)', smiles: 'OCCO' },
+    { name: 'Пропантриол-1,2,3 (глицерин)', smiles: 'OCC(O)CO' },
+    { name: 'Фенол',                 smiles: 'Oc1ccccc1' },
+    { name: 'Циклогексанол',         smiles: 'OC1CCCCC1' },
+  ],
+  aldehydes: [
+    { name: 'Метаналь (формальдегид)', smiles: 'C=O' },
+    { name: 'Этаналь (ацетальдегид)',  smiles: 'CC=O' },
+    { name: 'Пропаналь',             smiles: 'CCC=O' },
+    { name: 'Бутаналь',              smiles: 'CCCC=O' },
+    { name: 'Пентаналь',             smiles: 'CCCCC=O' },
+    { name: '2-Метилпропаналь',      smiles: 'CC(C)C=O' },
+    { name: 'Бензальдегид',          smiles: 'O=Cc1ccccc1' },
+  ],
+  ketones: [
+    { name: 'Пропанон (ацетон)',     smiles: 'CC(=O)C' },
+    { name: 'Бутанон',               smiles: 'CCC(=O)C' },
+    { name: 'Пентанон-2',            smiles: 'CCCC(=O)C' },
+    { name: 'Пентанон-3',            smiles: 'CCC(=O)CC' },
+    { name: 'Циклогексанон',         smiles: 'O=C1CCCCC1' },
+    { name: 'Ацетофенон',            smiles: 'CC(=O)c1ccccc1' },
+  ],
+  acids: [
+    { name: 'Метановая кислота (муравьиная)', smiles: 'C(=O)O' },
+    { name: 'Этановая кислота (уксусная)',    smiles: 'CC(=O)O' },
+    { name: 'Пропановая кислота',    smiles: 'CCC(=O)O' },
+    { name: 'Бутановая кислота (масляная)', smiles: 'CCCC(=O)O' },
+    { name: '2-Метилпропановая кислота', smiles: 'CC(C)C(=O)O' },
+    { name: 'Пентановая кислота (валериановая)', smiles: 'CCCCC(=O)O' },
+    { name: 'Бензойная кислота',     smiles: 'O=C(O)c1ccccc1' },
+    { name: 'Этандиовая кислота (щавелевая)', smiles: 'O=C(O)C(=O)O' },
+  ],
+  esters: [
+    { name: 'Метилметаноат',         smiles: 'COC=O' },
+    { name: 'Метилэтаноат',          smiles: 'COC(=O)C' },
+    { name: 'Этилэтаноат',           smiles: 'CCOC(=O)C' },
+    { name: 'Этилметаноат',          smiles: 'CCOC=O' },
+    { name: 'Пропилэтаноат',         smiles: 'CCCOC(=O)C' },
+    { name: 'Метилпропаноат',        smiles: 'COC(=O)CC' },
+    { name: 'Метилбензоат',          smiles: 'COC(=O)c1ccccc1' },
+  ],
+  amines: [
+    { name: 'Метиламин',             smiles: 'CN' },
+    { name: 'Этиламин',              smiles: 'CCN' },
+    { name: 'Пропиламин',            smiles: 'CCCN' },
+    { name: 'Изопропиламин',         smiles: 'CC(N)C' },
+    { name: 'Диметиламин',           smiles: 'CNC' },
+    { name: 'Триметиламин',          smiles: 'CN(C)C' },
+    { name: 'Анилин (фениламин)',    smiles: 'Nc1ccccc1' },
+    { name: 'Дифениламин',           smiles: 'c1ccccc1Nc1ccccc1' },
+  ],
+  halides: [
+    { name: 'Хлорметан',             smiles: 'CCl' },
+    { name: 'Бромметан',             smiles: 'CBr' },
+    { name: 'Хлорэтан',              smiles: 'CCCl' },
+    { name: '1-Хлорпропан',          smiles: 'CCCCl' },
+    { name: '2-Хлорпропан',          smiles: 'CC(Cl)C' },
+    { name: '1-Бромбутан',           smiles: 'CCCCBr' },
+    { name: '1,2-Дихлорэтан',        smiles: 'ClCCCl' },
+    { name: '1,1-Дихлорэтан',        smiles: 'CC(Cl)Cl' },
+    { name: 'Хлорбензол',            smiles: 'Clc1ccccc1' },
+    { name: 'Трихлорметан (хлороформ)', smiles: 'ClC(Cl)Cl' },
+    { name: 'Тетрахлорметан',        smiles: 'ClC(Cl)(Cl)Cl' },
+  ],
+};
+
+/* ============ STATE ============ */
+const state = {
+  mode: 'free',
+  selectedClasses: new Set(CLASSES.map(c => c.key)),
+  currentCompound: null,
+  answerShown: false,
+  streak: 0,
+  correct: 0,
+  total: 0,
+  bestStreak: 0,
+  tool: 'pen',
+  strokes: [],
+  undoStack: [],
+  isDrawing: false,
+  lastPoint: null,
+};
+
+/* ============ DOM ============ */
+const $ = id => document.getElementById(id);
+const menuScreen = $('menu-screen');
+const trainScreen = $('train-screen');
+const drawCanvas = $('draw');
+const overlay = $('overlay');
+const drawCtx = drawCanvas.getContext('2d');
+
+/* ============ INIT CHIPS ============ */
+CLASSES.forEach(c => {
+  const btn = document.createElement('button');
+  btn.className = 'chip active';
+  btn.dataset.class = c.key;
+  btn.textContent = c.label;
+  btn.addEventListener('click', () => {
+    if (state.selectedClasses.has(c.key)) {
+      if (state.selectedClasses.size === 1) return;
+      state.selectedClasses.delete(c.key);
+      btn.classList.remove('active');
+    } else {
+      state.selectedClasses.add(c.key);
+      btn.classList.add('active');
+    }
+  });
+  $('chips').appendChild(btn);
+});
+
+/* ============ MODE SELECT ============ */
+document.querySelectorAll('.mode-card').forEach(card => {
+  card.addEventListener('click', () => {
+    state.mode = card.dataset.mode;
+    document.querySelectorAll('.mode-card').forEach(c =>
+      c.classList.toggle('active', c === card));
+  });
+});
+
+/* ============ PROGRESS ============ */
+function loadProgress() {
+  try {
+    const p = JSON.parse(localStorage.getItem('skeletal_progress') || '{}');
+    state.bestStreak = p.bestStreak || 0;
+    state.correct = p.correct || 0;
+    state.total = p.total || 0;
+  } catch {}
+}
+function saveProgress() {
+  try {
+    localStorage.setItem('skeletal_progress', JSON.stringify({
+      bestStreak: state.bestStreak,
+      correct: state.correct,
+      total: state.total,
+    }));
+  } catch {}
+}
+loadProgress();
+
+/* ============ SCREEN NAV ============ */
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s =>
+    s.classList.toggle('active', s.id === id));
+}
+
+/* ============ START ============ */
+$('start-btn').addEventListener('click', () => {
+  state.streak = 0;
+  showScreen('train-screen');
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    setupCanvas();
+    nextTask();
+    updateHeader();
+  }));
+});
+
+$('back-btn').addEventListener('click', () => {
+  showScreen('menu-screen');
+});
+
+/* ============ CANVAS SETUP ============ */
+function setupCanvas() {
+  const wrap = $('canvas-wrap');
+  const dpr = window.devicePixelRatio || 1;
+  const newW = wrap.clientWidth;
+  const newH = wrap.clientHeight;
+  if (newW === 0 || newH === 0) return;
+
+  const oldW = drawCanvas.width / dpr;
+  const oldH = drawCanvas.height / dpr;
+
+  if (oldW > 0 && oldH > 0 && (oldW !== newW || oldH !== newH)) {
+    const sx = newW / oldW, sy = newH / oldH;
+    const scaleStrokes = (arr) => {
+      for (const stroke of arr) {
+        for (const p of stroke.points) { p.x *= sx; p.y *= sy; }
+        stroke.width *= Math.sqrt(sx * sy);
+      }
+    };
+    scaleStrokes(state.strokes);
+    for (const snap of state.undoStack) scaleStrokes(snap);
+  }
+
+  drawCanvas.width = Math.round(newW * dpr);
+  drawCanvas.height = Math.round(newH * dpr);
+  drawCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  drawCtx.lineCap = 'round';
+  drawCtx.lineJoin = 'round';
+
+  overlay.setAttribute('viewBox', `0 0 ${newW} ${newH}`);
+  redraw();
+  if (state.answerShown) renderOverlay();
+}
+
+/* ============ TASK ============ */
+function nextTask() {
+  const pool = [...state.selectedClasses].flatMap(c => COMPOUNDS[c] || []);
+  if (!pool.length) return;
+
+  let candidate, tries = 0;
+  do {
+    candidate = pool[Math.floor(Math.random() * pool.length)];
+    tries++;
+  } while (pool.length > 1 && state.currentCompound &&
+           candidate.name === state.currentCompound.name && tries < 25);
+
+  state.currentCompound = candidate;
+  state.answerShown = false;
+  state.strokes = [];
+  state.undoStack = [];
+  overlay.innerHTML = '';
+  overlay.classList.remove('visible');
+  redraw();
+  $('task-name').textContent = candidate.name;
+  updateActions();
+  updateHeader();
+}
+
+function updateHeader() {
+  const stats = $('stats');
+  if (state.mode === 'hybrid') {
+    const acc = state.total > 0 ? Math.round(state.correct / state.total * 100) : 0;
+    stats.textContent = `🔥 ${state.streak} · ${state.correct}/${state.total}${state.total ? ` (${acc}%)` : ''}`;
+  } else {
+    stats.textContent = '';
+  }
+}
+
+function updateActions() {
+  const a = $('answer-btn'), n = $('next-btn'), c = $('correct-btn'), w = $('wrong-btn');
+  if (state.answerShown) {
+    a.textContent = 'Скрыть ответ';
+    if (state.mode === 'hybrid') { n.hidden = true; c.hidden = false; w.hidden = false; }
+    else { n.hidden = false; c.hidden = true; w.hidden = true; }
+  } else {
+    a.textContent = 'Показать ответ';
+    n.hidden = false; c.hidden = true; w.hidden = true;
+  }
+}
+
+/* ============ DRAWING ============ */
+function getPos(e) {
+  const r = drawCanvas.getBoundingClientRect();
+  return { x: e.clientX - r.left, y: e.clientY - r.top };
+}
+
+function deepClone(obj) {
+  if (typeof structuredClone === 'function') return structuredClone(obj);
+  return JSON.parse(JSON.stringify(obj));
+}
+
+function snapshot() {
+  state.undoStack.push(deepClone(state.strokes));
+  if (state.undoStack.length > 50) state.undoStack.shift();
+}
+
+function startDraw(e) {
+  if (!state.currentCompound) return;
+  e.preventDefault();
+  try { drawCanvas.setPointerCapture(e.pointerId); } catch {}
+  snapshot();
+  state.isDrawing = true;
+  const p = getPos(e);
+  state.lastPoint = p;
+  state.strokes.push({
+    tool: state.tool,
+    width: state.tool === 'eraser' ? 24 : 3,
+    color: '#222',
+    points: [p],
+  });
+  drawCtx.save();
+  drawCtx.globalCompositeOperation = state.tool === 'eraser' ? 'destination-out' : 'source-over';
+  drawCtx.fillStyle = '#222';
+  drawCtx.beginPath();
+  drawCtx.arc(p.x, p.y, (state.tool === 'eraser' ? 24 : 3) / 2, 0, Math.PI * 2);
+  drawCtx.fill();
+  drawCtx.restore();
+}
+
+function moveDraw(e) {
+  if (!state.isDrawing) return;
+  e.preventDefault();
+  const p = getPos(e);
+  const stroke = state.strokes[state.strokes.length - 1];
+  stroke.points.push(p);
+  drawCtx.save();
+  drawCtx.globalCompositeOperation = stroke.tool === 'eraser' ? 'destination-out' : 'source-over';
+  drawCtx.strokeStyle = stroke.color;
+  drawCtx.lineWidth = stroke.width;
+  drawCtx.beginPath();
+  drawCtx.moveTo(state.lastPoint.x, state.lastPoint.y);
+  drawCtx.lineTo(p.x, p.y);
+  drawCtx.stroke();
+  drawCtx.restore();
+  state.lastPoint = p;
+}
+
+function endDraw() {
+  state.isDrawing = false;
+  state.lastPoint = null;
+}
+
+drawCanvas.addEventListener('pointerdown', startDraw);
+drawCanvas.addEventListener('pointermove', moveDraw);
+drawCanvas.addEventListener('pointerup', endDraw);
+drawCanvas.addEventListener('pointercancel', endDraw);
+drawCanvas.addEventListener('pointerleave', endDraw);
+
+/* ============ REDRAW ============ */
+function redraw() {
+  drawCtx.save();
+  drawCtx.setTransform(1, 0, 0, 1, 0, 0);
+  drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
+  drawCtx.restore();
+
+  for (const stroke of state.strokes) {
+    drawCtx.save();
+    drawCtx.globalCompositeOperation = stroke.tool === 'eraser' ? 'destination-out' : 'source-over';
+    drawCtx.strokeStyle = stroke.color;
+    drawCtx.fillStyle = stroke.color;
+    drawCtx.lineWidth = stroke.width;
+    drawCtx.lineCap = 'round';
+    drawCtx.lineJoin = 'round';
+    if (stroke.points.length === 1) {
+      const p = stroke.points[0];
+      drawCtx.beginPath();
+      drawCtx.arc(p.x, p.y, stroke.width / 2, 0, Math.PI * 2);
+      drawCtx.fill();
+    } else {
+      drawCtx.beginPath();
+      drawCtx.moveTo(stroke.points[0].x, stroke.points[0].y);
+      for (let i = 1; i < stroke.points.length; i++) drawCtx.lineTo(stroke.points[i].x, stroke.points[i].y);
+      drawCtx.stroke();
+    }
+    drawCtx.restore();
+  }
+}
+
+/* ============ UNDO / CLEAR ============ */
+function undo() {
+  if (!state.undoStack.length) return;
+  state.strokes = state.undoStack.pop();
+  redraw();
+}
+
+function clearCanvas() {
+  snapshot();
+  state.strokes = [];
+  redraw();
+}
+
+$('undo-btn').addEventListener('click', undo);
+$('clear-btn').addEventListener('click', clearCanvas);
+
+/* ============ TOOLS ============ */
+document.querySelectorAll('.tool-btn[data-tool]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    state.tool = btn.dataset.tool;
+    document.querySelectorAll('.tool-btn[data-tool]').forEach(b =>
+      b.classList.toggle('active', b === btn));
+  });
+});
+
+/* ============ ANSWER OVERLAY ============ */
+function renderOverlay() {
+  if (!state.currentCompound) return;
+  if (typeof SmilesDrawer === 'undefined') {
+    alert('Не удалось загрузить движок визуализации. Проверьте интернет.');
+    return;
+  }
+  const w = $('canvas-wrap').clientWidth;
+  if (!w) return;
+  overlay.innerHTML = '';
+  SmilesDrawer.parse(state.currentCompound.smiles, tree => {
+    const drawer = new SmilesDrawer.SvgDrawer({
+      width: w,
+      height: w,
+      padding: 40,
+      bondThickness: 1.5,
+    });
+    drawer.draw(tree, overlay, 'light');
+    overlay.classList.add('visible');
+  }, err => {
+    console.error('SmilesDrawer error:', err);
+    overlay.classList.remove('visible');
+  });
+}
+
+/* ============ ACTIONS ============ */
+$('answer-btn').addEventListener('click', () => {
+  if (state.answerShown) {
+    overlay.classList.remove('visible');
+    state.answerShown = false;
+    updateActions();
+  } else {
+    renderOverlay();
+    state.answerShown = true;
+    updateActions();
+  }
+});
+
+$('next-btn').addEventListener('click', nextTask);
+
+$('correct-btn').addEventListener('click', () => {
+  state.correct++; state.total++; state.streak++;
+  if (state.streak > state.bestStreak) state.bestStreak = state.streak;
+  saveProgress();
+  nextTask();
+});
+
+$('wrong-btn').addEventListener('click', () => {
+  state.total++; state.streak = 0;
+  saveProgress();
+  nextTask();
+});
+
+/* ============ RESIZE ============ */
+let rz;
+window.addEventListener('resize', () => {
+  if (!trainScreen.classList.contains('active')) return;
+  clearTimeout(rz);
+  rz = setTimeout(setupCanvas, 200);
+});
+
+/* Ориентация */
+window.addEventListener('orientationchange', () => {
+  if (!trainScreen.classList.contains('active')) return;
+  setTimeout(setupCanvas, 300);
+});
+</script>
+</body>
+</html>
