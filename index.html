@@ -78,6 +78,7 @@ h2 { font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform
 }
 .task-card.reaction-card { background: linear-gradient(135deg, #db2777, #f472b6); }
 .task-card.naming-card { background: linear-gradient(135deg, #0ea5e9, #38bdf8); }
+.task-card.conditions-card { background: linear-gradient(135deg, #f59e0b, #fbbf24); }
 .task-label { font-size: 11px; opacity: 0.85; margin-bottom: 2px; }
 .task-name { font-size: 19px; font-weight: 700; line-height: 1.2; }
 .task-equation {
@@ -195,6 +196,83 @@ h2 { font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform
   display: flex; align-items: center; justify-content: center;
 }
 #naming-svg { width: 100%; height: 100%; display: block; }
+
+/* ===== CONDITIONS ===== */
+#conditions-screen { padding: 10px; gap: 10px; overflow-y: auto; }
+#conditions-screen .train-header,
+#conditions-screen .task-card,
+#conditions-screen .balance-equation,
+#conditions-screen .options-grid,
+#conditions-screen .balance-feedback,
+#conditions-screen .actions { flex-shrink: 0; }
+.condition-arrow {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 4px; padding: 6px 0;
+}
+.condition-display {
+  display: inline-block;
+  padding: 5px 14px; border-radius: 10px;
+  background: #faf5ff;
+  border: 1.5px dashed var(--primary);
+  color: var(--primary);
+  font-weight: 700; font-size: 14px;
+  min-width: 40px; text-align: center;
+  transition: all 0.2s;
+}
+.condition-display.filled {
+  border-style: solid;
+  background: #ede9fe;
+}
+.condition-display.correct {
+  border-style: solid;
+  border-color: var(--success);
+  background: #f0fdf4;
+  color: #065f46;
+}
+.condition-display.wrong {
+  border-style: solid;
+  border-color: var(--error);
+  background: #fef2f2;
+  color: #991b1b;
+}
+.arrow-symbol {
+  font-size: 22px; color: var(--primary); font-weight: 700;
+}
+.options-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.option-btn {
+  padding: 14px 10px;
+  border-radius: 12px;
+  background: white;
+  border: 2px solid var(--border);
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+  transition: all 0.15s;
+  color: var(--text);
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  word-break: break-word;
+  line-height: 1.25;
+}
+.option-btn:active { transform: scale(0.97); }
+.option-btn.correct {
+  background: #f0fdf4;
+  border-color: var(--success);
+  color: #065f46;
+}
+.option-btn.wrong {
+  background: #fef2f2;
+  border-color: var(--error);
+  color: #991b1b;
+}
+.option-btn:disabled { cursor: default; }
+.option-btn:disabled:not(.correct):not(.wrong) { opacity: 0.5; }
 </style>
 </head>
 <body>
@@ -202,7 +280,7 @@ h2 { font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform
 <!-- ===== MENU ===== -->
 <div class="screen active" id="menu-screen">
   <h1>Скелетные формулы</h1>
-  <p class="subtitle">Рисуй молекулы, расставляй коэффициенты, определяй названия</p>
+  <p class="subtitle">Рисуй молекулы, расставляй коэффициенты, определяй названия и условия реакций</p>
 
   <h2>Режим</h2>
   <div class="mode-cards">
@@ -225,6 +303,11 @@ h2 { font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform
       <div class="mode-icon">🔤</div>
       <div class="mode-title">Название</div>
       <div class="mode-desc">Определи название по скелетной формуле</div>
+    </button>
+    <button class="mode-card" data-mode="conditions" style="grid-column: span 2;">
+      <div class="mode-icon">⚡</div>
+      <div class="mode-title">Условия</div>
+      <div class="mode-desc">Выбери условия протекания реакции</div>
     </button>
   </div>
 
@@ -326,6 +409,31 @@ h2 { font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform
   </div>
 </div>
 
+<!-- ===== CONDITIONS ===== -->
+<div class="screen" id="conditions-screen">
+  <div class="train-header">
+    <button class="icon-btn" id="conditions-back-btn">←</button>
+    <div class="stats" id="conditions-stats"></div>
+  </div>
+  <div class="task-card conditions-card">
+    <div class="task-label">Выбери условия реакции:</div>
+    <div class="task-name" id="conditions-label">—</div>
+  </div>
+  <div class="balance-equation">
+    <div class="eq-row" id="conditions-reactants"></div>
+    <div class="condition-arrow">
+      <span class="condition-display" id="conditions-display">?</span>
+      <span class="arrow-symbol">↓</span>
+    </div>
+    <div class="eq-row" id="conditions-products"></div>
+  </div>
+  <div class="options-grid" id="conditions-options"></div>
+  <div class="balance-feedback" id="conditions-feedback" hidden></div>
+  <div class="actions">
+    <button class="btn btn-primary" id="conditions-next">Далее</button>
+  </div>
+</div>
+
 <script>
 /* ============================================================
    УТИЛИТЫ
@@ -338,31 +446,27 @@ function normalize(arr) {
   const g = arr.reduce((a, b) => gcd(a, b), 0);
   return g ? arr.map(x => x / g) : arr.slice();
 }
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
 const STEMS = { 1:'мет', 2:'эт', 3:'проп', 4:'бут', 5:'пент', 6:'гекс', 7:'гепт', 8:'окт', 9:'нон', 10:'дек' };
 
-/* ============================================================
-   НОРМАЛИЗАЦИЯ НАЗВАНИЙ
-   ============================================================ */
-// "2-Метилпропан" → "2метилпропан"
-// "Этановая кислота" → "этановая"
-// "о-Ксилол" → "оксилол"
 function normalizeName(s) {
   return String(s).toLowerCase()
     .replace(/ё/g, 'е')
     .replace(/\bкислота\b/g, '')
     .replace(/[^a-zа-я0-9]/g, '');
 }
-
-// Возвращает Set нормализованных допустимых ответов
 function getAcceptableAnswers(compound) {
   const answers = new Set();
   if (!compound || !compound.name) return answers;
   const name = compound.name;
-
-  // Прямое имя
   answers.add(normalizeName(name));
-
-  // Из скобок: "Этановая кислота (уксусная)"
   const m = name.match(/^(.+?)\s*\(([^)]+)\)\s*$/);
   if (m) {
     answers.add(normalizeName(m[1]));
@@ -371,13 +475,8 @@ function getAcceptableAnswers(compound) {
       if (trimmed) answers.add(normalizeName(trimmed));
     });
   }
-
-  // Перестановка цифры: "Бутанол-1" → "1-Бутанол"
   const posMatch = name.match(/^(.+?)-(\d+)$/);
-  if (posMatch) {
-    answers.add(normalizeName(`${posMatch[2]}-${posMatch[1]}`));
-  }
-
+  if (posMatch) answers.add(normalizeName(`${posMatch[2]}-${posMatch[1]}`));
   return answers;
 }
 
@@ -401,6 +500,7 @@ const CLASSES = [
   { key: 'halides',      label: 'Галогенопроизводные' },
   { key: 'reactions',    label: 'Реакции', special: true },
   { key: 'balance-reactions', label: 'Реакции (баланс)', special: true },
+  { key: 'conditions',   label: 'Условия', special: true },
 ];
 
 /* ============================================================
@@ -681,7 +781,7 @@ const HARDCODE_REACTIONS = [
   { cat:'alkenes', label:'Гидрирование пропена', species:['C₃H₆','H₂','C₃H₈'], coeffs:[1,1,1], arrowAt:2, cond:'Ni, t°' },
   { cat:'alkenes', label:'Бромирование этена', species:['C₂H₄','Br₂','C₂H₄Br₂'], coeffs:[1,1,1], arrowAt:2, cond:'CCl₄' },
   { cat:'alkenes', label:'Хлорирование пропена', species:['C₃H₆','Cl₂','C₃H₆Cl₂'], coeffs:[1,1,1], arrowAt:2, cond:'CCl₄' },
-  { cat:'alkenes', label:'Гидрохлорирование этена', species:['C₂H₄','HCl','C₂H₅Cl'], coeffs:[1,1,1], arrowAt:2, cond:'' },
+  { cat:'alkenes', label:'Гидрохлорирование этена', species:['C₂H₄','HCl','C₂H₅Cl'], coeffs:[1,1,1], arrowAt:2, cond:'кат.' },
   { cat:'alkenes', label:'Гидратация этена', species:['C₂H₄','H₂O','C₂H₅OH'], coeffs:[1,1,1], arrowAt:2, cond:'H⁺' },
   { cat:'alkenes', label:'Гидратация пропена', species:['C₃H₆','H₂O','C₃H₇OH'], coeffs:[1,1,1], arrowAt:2, cond:'H⁺' },
   { cat:'alkenes', label:'Мягкое окисление этена KMnO₄', species:['C₂H₄','KMnO₄','H₂O','C₂H₆O₂','MnO₂','KOH'], coeffs:[3,2,4,3,2,2], arrowAt:3, cond:'0°C' },
@@ -700,11 +800,11 @@ const HARDCODE_REACTIONS = [
   { cat:'alcohols', label:'Дегидратация этанола', species:['C₂H₅OH','C₂H₄','H₂O'], coeffs:[1,1,1], arrowAt:1, cond:'H₂SO₄, 170°C' },
   { cat:'alcohols', label:'Дегидратация пропанола-1', species:['C₃H₇OH','C₃H₆','H₂O'], coeffs:[1,1,1], arrowAt:1, cond:'H₂SO₄, 170°C' },
   { cat:'alcohols', label:'Межмолекулярная дегидратация этанола', species:['C₂H₅OH','C₂H₅OC₂H₅','H₂O'], coeffs:[2,1,1], arrowAt:1, cond:'H₂SO₄, 140°C' },
-  { cat:'alcohols', label:'Окисление этанола CuO', species:['C₂H₅OH','CuO','CH₃CHO','Cu','H₂O'], coeffs:[1,1,1,1,1], arrowAt:2, cond:'t°' },
-  { cat:'alcohols', label:'Окисление метанола CuO', species:['CH₃OH','CuO','HCHO','Cu','H₂O'], coeffs:[1,1,1,1,1], arrowAt:2, cond:'t°' },
+  { cat:'alcohols', label:'Окисление этанола CuO', species:['C₂H₅OH','CuO','CH₃CHO','Cu','H₂O'], coeffs:[1,1,1,1,1], arrowAt:2, cond:'CuO, t°' },
+  { cat:'alcohols', label:'Окисление метанола CuO', species:['CH₃OH','CuO','HCHO','Cu','H₂O'], coeffs:[1,1,1,1,1], arrowAt:2, cond:'CuO, t°' },
   { cat:'alcohols', label:'Окисление этанола K₂Cr₂O₇', species:['C₂H₅OH','K₂Cr₂O₇','H₂SO₄','CH₃COOH','Cr₂(SO₄)₃','K₂SO₄','H₂O'], coeffs:[3,2,8,3,2,2,11], arrowAt:3, cond:'H⁺, t°' },
-  { cat:'alcohols', label:'Взаимодействие натрия с этанолом', species:['C₂H₅OH','Na','C₂H₅ONa','H₂'], coeffs:[2,2,2,1], arrowAt:2, cond:'' },
-  { cat:'alcohols', label:'Взаимодействие натрия с фенолом', species:['C₆H₅OH','Na','C₆H₅ONa','H₂'], coeffs:[2,2,2,1], arrowAt:2, cond:'' },
+  { cat:'alcohols', label:'Взаимодействие натрия с этанолом', species:['C₂H₅OH','Na','C₂H₅ONa','H₂'], coeffs:[2,2,2,1], arrowAt:2, cond:'t°' },
+  { cat:'alcohols', label:'Взаимодействие натрия с фенолом', species:['C₆H₅OH','Na','C₆H₅ONa','H₂'], coeffs:[2,2,2,1], arrowAt:2, cond:'t°' },
   { cat:'aldehydes', label:'Серебряное зеркало (этаналь)', species:['CH₃CHO','Ag₂O','CH₃COOH','Ag'], coeffs:[1,1,1,2], arrowAt:2, cond:'NH₃, t°' },
   { cat:'aldehydes', label:'Серебряное зеркало (формальдегид)', species:['HCHO','Ag₂O','CO₂','H₂O','Ag'], coeffs:[1,2,1,1,4], arrowAt:2, cond:'NH₃, t°' },
   { cat:'aldehydes', label:'Окисление этаналя Cu(OH)₂', species:['CH₃CHO','Cu(OH)₂','CH₃COOH','Cu₂O','H₂O'], coeffs:[1,2,1,1,2], arrowAt:2, cond:'t°' },
@@ -713,16 +813,16 @@ const HARDCODE_REACTIONS = [
   { cat:'aldehydes', label:'Окисление метаналя KMnO₄', species:['HCHO','KMnO₄','H₂SO₄','CO₂','MnSO₄','K₂SO₄','H₂O'], coeffs:[5,2,3,5,2,1,8], arrowAt:3, cond:'H⁺, t°' },
   { cat:'ketones', label:'Восстановление ацетона', species:['CH₃COCH₃','H₂','CH₃CH(OH)CH₃'], coeffs:[1,1,1], arrowAt:2, cond:'Ni, t°' },
   { cat:'ketones', label:'Восстановление бутанона', species:['C₂H₅COCH₃','H₂','C₂H₅CH(OH)CH₃'], coeffs:[1,1,1], arrowAt:2, cond:'Ni, t°' },
-  { cat:'acids', label:'Уксусная кислота + NaOH', species:['CH₃COOH','NaOH','CH₃COONa','H₂O'], coeffs:[1,1,1,1], arrowAt:2, cond:'' },
-  { cat:'acids', label:'Уксусная кислота + Na₂CO₃', species:['CH₃COOH','Na₂CO₃','CH₃COONa','CO₂','H₂O'], coeffs:[2,1,2,1,1], arrowAt:2, cond:'' },
-  { cat:'acids', label:'Уксусная кислота + Mg', species:['CH₃COOH','Mg','(CH₃COO)₂Mg','H₂'], coeffs:[2,1,1,1], arrowAt:2, cond:'' },
+  { cat:'acids', label:'Уксусная кислота + NaOH', species:['CH₃COOH','NaOH','CH₃COONa','H₂O'], coeffs:[1,1,1,1], arrowAt:2, cond:'водн.' },
+  { cat:'acids', label:'Уксусная кислота + Na₂CO₃', species:['CH₃COOH','Na₂CO₃','CH₃COONa','CO₂','H₂O'], coeffs:[2,1,2,1,1], arrowAt:2, cond:'водн.' },
+  { cat:'acids', label:'Уксусная кислота + Mg', species:['CH₃COOH','Mg','(CH₃COO)₂Mg','H₂'], coeffs:[2,1,1,1], arrowAt:2, cond:'t°' },
   { cat:'acids', label:'Уксусная кислота + этанол', species:['CH₃COOH','C₂H₅OH','CH₃COOC₂H₅','H₂O'], coeffs:[1,1,1,1], arrowAt:2, cond:'H₂SO₄, t°' },
-  { cat:'amines', label:'Метиламин + HCl', species:['CH₃NH₂','HCl','CH₃NH₃Cl'], coeffs:[1,1,1], arrowAt:2, cond:'' },
-  { cat:'amines', label:'Анилин + HCl', species:['C₆H₅NH₂','HCl','C₆H₅NH₃Cl'], coeffs:[1,1,1], arrowAt:2, cond:'' },
+  { cat:'amines', label:'Метиламин + HCl', species:['CH₃NH₂','HCl','CH₃NH₃Cl'], coeffs:[1,1,1], arrowAt:2, cond:'водн.' },
+  { cat:'amines', label:'Анилин + HCl', species:['C₆H₅NH₂','HCl','C₆H₅NH₃Cl'], coeffs:[1,1,1], arrowAt:2, cond:'водн.' },
   { cat:'amines', label:'Алкилирование аммиака', species:['NH₃','CH₃Cl','CH₃NH₂','HCl'], coeffs:[1,1,1,1], arrowAt:2, cond:'t°' },
   { cat:'amines', label:'Восстановление нитробензола', species:['C₆H₅NO₂','H₂','C₆H₅NH₂','H₂O'], coeffs:[1,3,1,2], arrowAt:2, cond:'Ni, t°' },
-  { cat:'aminoacids', label:'Глицин + NaOH', species:['NH₂CH₂COOH','NaOH','NH₂CH₂COONa','H₂O'], coeffs:[1,1,1,1], arrowAt:2, cond:'' },
-  { cat:'aminoacids', label:'Глицин + HCl', species:['NH₂CH₂COOH','HCl','ClNH₃CH₂COOH'], coeffs:[1,1,1], arrowAt:2, cond:'' },
+  { cat:'aminoacids', label:'Глицин + NaOH', species:['NH₂CH₂COOH','NaOH','NH₂CH₂COONa','H₂O'], coeffs:[1,1,1,1], arrowAt:2, cond:'водн.' },
+  { cat:'aminoacids', label:'Глицин + HCl', species:['NH₂CH₂COOH','HCl','ClNH₃CH₂COOH'], coeffs:[1,1,1], arrowAt:2, cond:'водн.' },
   { cat:'halides', label:'Гидролиз хлорметана', species:['CH₃Cl','NaOH','CH₃OH','NaCl'], coeffs:[1,1,1,1], arrowAt:2, cond:'водн.' },
   { cat:'halides', label:'Дегидрогалогенирование хлорэтана', species:['C₂H₅Cl','KOH','C₂H₄','KCl','H₂O'], coeffs:[1,1,1,1,1], arrowAt:2, cond:'спирт, t°' },
   { cat:'halides', label:'Хлорметан + Na (Вюрц)', species:['CH₃Cl','Na','C₂H₆','NaCl'], coeffs:[2,2,1,2], arrowAt:2, cond:'t°' },
@@ -735,12 +835,12 @@ const HARDCODE_REACTIONS = [
   { cat:'alkanes', label:'Разложение перекиси водорода', species:['H₂O₂','H₂O','O₂'], coeffs:[2,2,1], arrowAt:1, cond:'MnO₂' },
   { cat:'alkanes', label:'Разложение карбоната кальция', species:['CaCO₃','CaO','CO₂'], coeffs:[1,1,1], arrowAt:1, cond:'t°' },
   { cat:'alkanes', label:'Разложение бертолетовой соли', species:['KClO₃','KCl','O₂'], coeffs:[2,2,3], arrowAt:1, cond:'MnO₂, t°' },
-  { cat:'alkanes', label:'Цинк + HCl', species:['Zn','HCl','ZnCl₂','H₂'], coeffs:[1,2,1,1], arrowAt:2, cond:'' },
-  { cat:'alkanes', label:'Алюминий + HCl', species:['Al','HCl','AlCl₃','H₂'], coeffs:[2,6,2,3], arrowAt:2, cond:'' },
+  { cat:'alkanes', label:'Цинк + HCl', species:['Zn','HCl','ZnCl₂','H₂'], coeffs:[1,2,1,1], arrowAt:2, cond:'водн.' },
+  { cat:'alkanes', label:'Алюминий + HCl', species:['Al','HCl','AlCl₃','H₂'], coeffs:[2,6,2,3], arrowAt:2, cond:'водн.' },
   { cat:'alkanes', label:'Алюминотермия', species:['Al','Fe₂O₃','Al₂O₃','Fe'], coeffs:[2,1,1,2], arrowAt:2, cond:'t°' },
-  { cat:'alkanes', label:'Нейтрализация NaOH + HCl', species:['NaOH','HCl','NaCl','H₂O'], coeffs:[1,1,1,1], arrowAt:2, cond:'' },
-  { cat:'alkanes', label:'Нейтрализация Ca(OH)₂ + HCl', species:['Ca(OH)₂','HCl','CaCl₂','H₂O'], coeffs:[1,2,1,2], arrowAt:2, cond:'' },
-  { cat:'alkanes', label:'Нейтрализация NaOH + H₂SO₄', species:['NaOH','H₂SO₄','Na₂SO₄','H₂O'], coeffs:[2,1,1,2], arrowAt:2, cond:'' },
+  { cat:'alkanes', label:'Нейтрализация NaOH + HCl', species:['NaOH','HCl','NaCl','H₂O'], coeffs:[1,1,1,1], arrowAt:2, cond:'водн.' },
+  { cat:'alkanes', label:'Нейтрализация Ca(OH)₂ + HCl', species:['Ca(OH)₂','HCl','CaCl₂','H₂O'], coeffs:[1,2,1,2], arrowAt:2, cond:'водн.' },
+  { cat:'alkanes', label:'Нейтрализация NaOH + H₂SO₄', species:['NaOH','H₂SO₄','Na₂SO₄','H₂O'], coeffs:[2,1,1,2], arrowAt:2, cond:'водн.' },
 ];
 HARDCODE_REACTIONS.forEach(r => {
   REACTIONS.push({
@@ -797,6 +897,13 @@ DRAWING_REACTIONS.forEach(r => {
   });
 });
 
+/* Дистракторы для режима «Условия» */
+const CONDITION_DISTRACTORS = [
+  'Ni, t°', 'H⁺', 'H₂SO₄, 170°C', 'H₂SO₄, 140°C', 'Hg²⁺, H⁺',
+  'hν', 'FeCl₃', 'AlCl₃', 'H₂SO₄', 'CuO, t°', 'MnO₂, t°', 'Cакт, 600°C',
+  'H₂SO₄, t°', 'спирт, t°', 'водн.', '0°C', 'CCl₄', 'NH₃, t°',
+];
+
 /* ============================================================
    СОСТОЯНИЕ
    ============================================================ */
@@ -807,6 +914,7 @@ const state = {
   tool: 'pen', strokes: [], undoStack: [], isDrawing: false, lastPoint: null,
   balanceTask: null, balanceChecked: false,
   namingTask: null, namingChecked: false,
+  conditionsTask: null, conditionsAnswered: false,
   streak: 0, correct: 0, total: 0, bestStreak: 0,
 };
 
@@ -905,9 +1013,10 @@ $('start-btn').addEventListener('click', () => {
     }));
   } else if (state.mode === 'naming') {
     showScreen('naming-screen');
-    requestAnimationFrame(() => requestAnimationFrame(() => {
-      nextNamingTask();
-    }));
+    requestAnimationFrame(() => requestAnimationFrame(nextNamingTask));
+  } else if (state.mode === 'conditions') {
+    showScreen('conditions-screen');
+    requestAnimationFrame(() => requestAnimationFrame(nextConditionsTask));
   } else {
     showScreen('train-screen');
     requestAnimationFrame(() => requestAnimationFrame(() => {
@@ -921,6 +1030,7 @@ $('start-btn').addEventListener('click', () => {
 $('back-btn').addEventListener('click', () => showScreen('menu-screen'));
 $('balance-back-btn').addEventListener('click', () => showScreen('menu-screen'));
 $('naming-back-btn').addEventListener('click', () => showScreen('menu-screen'));
+$('conditions-back-btn').addEventListener('click', () => showScreen('menu-screen'));
 
 /* ============================================================
    TRAIN: CANVAS
@@ -1042,45 +1152,39 @@ function getDrawingPool() {
   const pool = [];
   for (const key of state.selectedClasses) {
     if (key === 'reactions') pool.push(...REACTIONS.filter(r => r.forDrawing));
-    else if (key === 'balance-reactions') {}
+    else if (key === 'balance-reactions' || key === 'conditions') {}
     else if (COMPOUNDS[key]) pool.push(...COMPOUNDS[key]);
   }
   if (!pool.length) for (const k of Object.keys(COMPOUNDS)) pool.push(...COMPOUNDS[k]);
   return pool;
 }
-
 function nextTask() {
   const pool = getDrawingPool();
   if (!pool.length) return;
   let candidate, tries = 0;
   do { candidate = pool[Math.floor(Math.random() * pool.length)]; tries++; }
   while (pool.length > 1 && state.currentCompound && candidate.name === state.currentCompound.name && tries < 25);
-
   state.currentCompound = candidate;
   state.answerShown = false;
   state.strokes = [];
   state.undoStack = [];
   overlay.innerHTML = '';
   overlay.classList.remove('visible');
-
   const isReaction = !!candidate.reactants;
   $('task-card').classList.toggle('reaction-card', isReaction);
   $('task-label').textContent = isReaction ? 'Нарисуй продукт реакции:' : 'Нарисуй скелетную формулу:';
   $('task-name').textContent = candidate.name || candidate.label;
-
   const eqEl = $('task-equation');
   if (isReaction) { eqEl.textContent = `${candidate.reactants} → ?`; eqEl.hidden = false; }
   else { eqEl.hidden = true; eqEl.textContent = ''; }
   updateActions(); updateHeader(); setupCanvas(); redraw();
 }
-
 function updateHeader() {
   if (state.mode === 'hybrid') {
     const acc = state.total > 0 ? Math.round(state.correct / state.total * 100) : 0;
     $('stats').textContent = `🔥 ${state.streak} · ${state.correct}/${state.total}${state.total ? ` (${acc}%)` : ''}`;
   } else $('stats').textContent = '';
 }
-
 function updateActions() {
   const a = $('answer-btn'), n = $('next-btn'), c = $('correct-btn'), w = $('wrong-btn');
   if (state.answerShown) {
@@ -1092,7 +1196,6 @@ function updateActions() {
     n.hidden = false; c.hidden = true; w.hidden = true;
   }
 }
-
 function renderOverlay() {
   const c = state.currentCompound;
   if (!c) return;
@@ -1106,7 +1209,6 @@ function renderOverlay() {
     overlay.classList.add('visible');
   }, err => { console.error(err); overlay.classList.remove('visible'); });
 }
-
 $('answer-btn').addEventListener('click', () => {
   const c = state.currentCompound;
   if (!c) return;
@@ -1254,7 +1356,7 @@ $('notes-toggle').addEventListener('click', () => {
    ============================================================ */
 function getBalancePool() {
   const useAll = state.selectedClasses.has('balance-reactions');
-  const cats = [...state.selectedClasses].filter(c => c !== 'reactions' && c !== 'balance-reactions');
+  const cats = [...state.selectedClasses].filter(c => c !== 'reactions' && c !== 'balance-reactions' && c !== 'conditions');
   return REACTIONS.filter(r => {
     if (!r.forBalance) return false;
     if (useAll) return true;
@@ -1362,7 +1464,6 @@ $('balance-input').addEventListener('keydown', e => { if (e.key === 'Enter') che
 /* ============================================================
    NAMING: ЛОГИКА
    ============================================================ */
-// Для 1-атомных молекул SvgDrawer рисует "точку без подписи" — заменяем на явные водороды
 const NAMING_SMILES_OVERRIDE = {
   'C':    '[CH4]',
   'CC':   '[CH3][CH3]',
@@ -1371,7 +1472,6 @@ const NAMING_SMILES_OVERRIDE = {
   'CO':   '[CH3][OH]',
   'C=O':  '[CH2]=O',
 };
-
 function getNamingPool() {
   const pool = [];
   for (const key of state.selectedClasses) {
@@ -1380,7 +1480,6 @@ function getNamingPool() {
   if (!pool.length) for (const k of Object.keys(COMPOUNDS)) pool.push(...COMPOUNDS[k]);
   return pool;
 }
-
 function nextNamingTask() {
   const pool = getNamingPool();
   if (!pool.length) return;
@@ -1389,7 +1488,6 @@ function nextNamingTask() {
   while (tries < 25 && state.namingTask && candidate.name === state.namingTask.name);
   state.namingTask = candidate;
   state.namingChecked = false;
-
   const inp = $('naming-input');
   inp.value = ''; inp.className = ''; inp.disabled = false;
   inp.placeholder = 'Название соединения';
@@ -1400,7 +1498,6 @@ function nextNamingTask() {
   updateNamingHeader();
   renderNamingSvg();
 }
-
 function renderNamingSvg() {
   const c = state.namingTask;
   if (!c) return;
@@ -1408,7 +1505,6 @@ function renderNamingSvg() {
   const wrap = $('naming-svg-wrap');
   const w = wrap.clientWidth, h = wrap.clientHeight;
   if (!w || !h) return;
-
   if (typeof SmilesDrawer === 'undefined') {
     svg.innerHTML = '';
     const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
@@ -1423,28 +1519,18 @@ function renderNamingSvg() {
   const smiles = NAMING_SMILES_OVERRIDE[c.smiles] || c.smiles;
   svg.innerHTML = '';
   SmilesDrawer.parse(smiles, tree => {
-    const drawer = new SmilesDrawer.SvgDrawer({
-      width: w, height: h, padding: 30, bondThickness: 2,
-    });
+    const drawer = new SmilesDrawer.SvgDrawer({ width: w, height: h, padding: 30, bondThickness: 2 });
     drawer.draw(tree, svg, 'light');
-  }, err => {
-    console.error('SmilesDrawer error:', err);
-    svg.innerHTML = '';
-  });
+  }, err => { console.error('SmilesDrawer error:', err); svg.innerHTML = ''; });
 }
-
 function checkNaming() {
   if (!state.namingTask || state.namingChecked) return;
   const task = state.namingTask;
   const input = $('naming-input').value.trim();
-  if (!input) {
-    showNamingFeedback('Введи название соединения.', false);
-    return;
-  }
+  if (!input) { showNamingFeedback('Введи название соединения.', false); return; }
   const userNorm = normalizeName(input);
   const acceptable = getAcceptableAnswers(task);
   const isCorrect = acceptable.has(userNorm);
-
   state.namingChecked = true;
   state.total++;
   if (isCorrect) {
@@ -1465,22 +1551,144 @@ function checkNaming() {
   saveProgress();
   updateNamingHeader();
 }
-
 function showNamingFeedback(html, ok) {
   const fb = $('naming-feedback');
   fb.innerHTML = html;
   fb.className = 'balance-feedback ' + (ok ? 'correct' : 'wrong');
   fb.hidden = false;
 }
-
 function updateNamingHeader() {
   const acc = state.total > 0 ? Math.round(state.correct / state.total * 100) : 0;
   $('naming-stats').textContent = `🔥 ${state.streak} · ${state.correct}/${state.total}${state.total ? ` (${acc}%)` : ''}`;
 }
-
 $('naming-check').addEventListener('click', checkNaming);
 $('naming-next').addEventListener('click', nextNamingTask);
 $('naming-input').addEventListener('keydown', e => { if (e.key === 'Enter') checkNaming(); });
+
+/* ============================================================
+   CONDITIONS: ЛОГИКА
+   ============================================================ */
+function hasContentConditions(r) {
+  if (!r.forBalance) return false;
+  if (!r.conditions) return false;
+  const c = r.conditions.trim();
+  if (!c) return false;
+  if (c === 't°') return false;
+  if (c === 'кат.') return false;
+  return true;
+}
+function getConditionsPool() {
+  const useAll = state.selectedClasses.has('conditions');
+  const cats = [...state.selectedClasses].filter(c =>
+    c !== 'reactions' && c !== 'balance-reactions' && c !== 'conditions');
+  return REACTIONS.filter(r => {
+    if (!hasContentConditions(r)) return false;
+    if (useAll) return true;
+    return cats.includes(r.category);
+  });
+}
+function pickConditionDistractors(correct, n) {
+  const pool = CONDITION_DISTRACTORS.filter(d => d !== correct);
+  return shuffle(pool).slice(0, n);
+}
+function nextConditionsTask() {
+  let pool = getConditionsPool();
+  if (!pool.length) pool = REACTIONS.filter(r => hasContentConditions(r));
+  if (!pool.length) return;
+  let candidate, tries = 0;
+  do { candidate = pool[Math.floor(Math.random() * pool.length)]; tries++; }
+  while (tries < 25 && state.conditionsTask && candidate.label === state.conditionsTask.label);
+  state.conditionsTask = candidate;
+  state.conditionsAnswered = false;
+
+  $('conditions-label').textContent = candidate.label;
+  renderConditionsEquation(candidate);
+
+  const display = $('conditions-display');
+  display.textContent = '?';
+  display.className = 'condition-display';
+
+  const options = shuffle([candidate.conditions, ...pickConditionDistractors(candidate.conditions, 3)]);
+  const grid = $('conditions-options');
+  grid.innerHTML = '';
+  options.forEach(opt => {
+    const btn = document.createElement('button');
+    btn.className = 'option-btn';
+    btn.textContent = opt;
+    btn.dataset.condition = opt;
+    btn.addEventListener('click', () => handleConditionClick(btn, opt, candidate));
+    grid.appendChild(btn);
+  });
+
+  $('conditions-feedback').hidden = true;
+  $('conditions-feedback').className = 'balance-feedback';
+  $('conditions-feedback').innerHTML = '';
+  updateConditionsHeader();
+}
+function renderConditionsEquation(task) {
+  const { species, coeffs, arrowAt } = task;
+  const reactants = species.slice(0, arrowAt);
+  const products = species.slice(arrowAt);
+  const renderRow = (el, list, startIdx) => {
+    el.innerHTML = '';
+    list.forEach((sp, i) => {
+      if (i > 0) {
+        const plus = document.createElement('span');
+        plus.className = 'plus-sign';
+        plus.textContent = '+';
+        el.appendChild(plus);
+      }
+      const spEl = document.createElement('span');
+      spEl.className = 'species';
+      spEl.textContent = `${coeffs[startIdx + i]} ${sp}`;
+      el.appendChild(spEl);
+    });
+  };
+  renderRow($('conditions-reactants'), reactants, 0);
+  renderRow($('conditions-products'), products, arrowAt);
+}
+function handleConditionClick(btn, condition, task) {
+  if (state.conditionsAnswered) return;
+  state.conditionsAnswered = true;
+
+  document.querySelectorAll('#conditions-options .option-btn').forEach(b => b.disabled = true);
+
+  const isCorrect = condition === task.conditions;
+  const display = $('conditions-display');
+  display.textContent = task.conditions;
+  display.classList.add('correct');
+
+  state.total++;
+  if (isCorrect) {
+    btn.classList.add('correct');
+    state.correct++; state.streak++;
+    if (state.streak > state.bestStreak) state.bestStreak = state.streak;
+    showConditionsFeedback('✓ Верно!', true);
+  } else {
+    btn.classList.add('wrong');
+    document.querySelectorAll('#conditions-options .option-btn').forEach(b => {
+      if (b.dataset.condition === task.conditions) b.classList.add('correct');
+    });
+    state.streak = 0;
+    showConditionsFeedback(
+      `<strong>Правильный ответ:</strong> ${task.conditions}<br><strong>Твой ответ:</strong> ${condition}`,
+      false
+    );
+  }
+  saveProgress();
+  updateConditionsHeader();
+}
+function showConditionsFeedback(html, ok) {
+  const fb = $('conditions-feedback');
+  fb.innerHTML = html;
+  fb.className = 'balance-feedback ' + (ok ? 'correct' : 'wrong');
+  fb.hidden = false;
+}
+function updateConditionsHeader() {
+  const acc = state.total > 0 ? Math.round(state.correct / state.total * 100) : 0;
+  $('conditions-stats').textContent = `🔥 ${state.streak} · ${state.correct}/${state.total}${state.total ? ` (${acc}%)` : ''}`;
+}
+$('conditions-next').addEventListener('click', nextConditionsTask);
 
 /* ============================================================
    RESIZE
