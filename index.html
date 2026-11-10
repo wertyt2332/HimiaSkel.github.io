@@ -989,7 +989,6 @@ function formulaToSmiles(text) {
   s = s.replace(/≡/g, '#').replace(/==/g, '=').replace(/[–—]/g, '-');
   if (!s) return null;
 
-  // Простые случаи
   const simple = {
     'CH4': 'C', 'CH3': 'C', 'CH2': 'C', 'CH': 'C',
     'OH': 'O', 'NH2': 'N', 'CL': 'Cl', 'BR': 'Br', 'F': 'F', 'I': 'I',
@@ -1023,7 +1022,6 @@ function tokenizeFormula(s) {
       tokens.push({type: 'paren', value: c});
       i++;
     } else if (/\d/.test(c) && tokens.length && tokens[tokens.length-1].type === 'paren' && tokens[tokens.length-1].value === ')') {
-      // коэффициент после закрывающей скобки
       let num = '';
       while (i < s.length && /\d/.test(s[i])) { num += s[i]; i++; }
       tokens.push({type: 'coeff', value: parseInt(num, 10)});
@@ -1073,13 +1071,10 @@ function parseSmilesTokens(tokens) {
     }
     if (t.type === 'paren') {
       if (t.value === ')') {
-        i++;
-        return {smiles, consumed: i};
+        return {smiles, consumed: i + 1};
       }
-      // открывающая скобка — рекурсия
       const inner = parseSmilesTokens(tokens.slice(i + 1));
       let branch = '(' + inner.smiles + ')';
-      // проверить коэффициент
       let coeff = 1;
       const after = i + 1 + inner.consumed;
       if (after < tokens.length && tokens[after].type === 'coeff') {
@@ -1107,35 +1102,71 @@ function parseSmilesTokens(tokens) {
 }
 
 /* ============================================================
-   SMILES → CANVAS (растр)
+   SMILES → IMAGE (для хотсвапа)
    ============================================================ */
-function drawSmilesOnCanvas(smiles, ctx, x, y, w, h) {
+function renderSmilesToImage(smiles, logicalW, logicalH) {
   return new Promise((resolve, reject) => {
-    try {
-      const tree = SmilesDrawer.parse(smiles);
-      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-      svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
-      const drawer = new SmilesDrawer.SvgDrawer({
-        width: w, height: h, padding: 10, bondThickness: 2,
-      });
-      drawer.draw(tree, svg, 'light');
-      const svgStr = new XMLSerializer().serializeToString(svg);
-      const blob = new Blob([svgStr], {type: 'image/svg+xml;charset=utf-8'});
-      const url = URL.createObjectURL(blob);
-      const img = new Image();
-      img.onload = () => {
-        ctx.drawImage(img, x, y, w, h);
-        URL.revokeObjectURL(url);
-        resolve();
-      };
-      img.onerror = () => {
-        URL.revokeObjectURL(url);
-        reject(new Error('Image load failed'));
-      };
-      img.src = url;
-    } catch(e) {
-      reject(e);
+    if (typeof SmilesDrawer === 'undefined') {
+      reject(new Error('SmilesDrawer не загружен'));
+      return;
     }
+    SmilesDrawer.parse(smiles, (tree) => {
+      const dpr = window.devicePixelRatio || 1;
+      const pw = Math.round(logicalW * dpr);
+      const ph = Math.round(logicalH * dpr);
+      let svg = null;
+      try {
+        svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+        svg.setAttribute('width', String(pw));
+        svg.setAttribute('height', String(ph));
+        svg.setAttribute('viewBox', `0 0 ${pw} ${ph}`);
+        svg.style.cssText = `position:fixed;left:-99999px;top:0;width:${pw}px;height:${ph}px;`;
+        document.body.appendChild(svg);
+        void svg.getBoundingClientRect();
+
+        const drawer = new SmilesDrawer.SvgDrawer({
+          width: pw,
+          height: ph,
+          padding: 15 * dpr,
+          bondThickness: 2 * dpr,
+        });
+        drawer.draw(tree, svg, 'light');
+
+        setTimeout(() => {
+          try {
+            const svgStr = new XMLSerializer().serializeToString(svg);
+            if (svg.parentNode) svg.parentNode.removeChild(svg);
+            svg = null;
+
+            if (!svgStr || !svgStr.includes('<svg')) {
+              reject(new Error('Пустой SVG'));
+              return;
+            }
+            const blob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const img = new Image();
+            img.onload = () => {
+              URL.revokeObjectURL(url);
+              resolve(img);
+            };
+            img.onerror = () => {
+              URL.revokeObjectURL(url);
+              reject(new Error('Не удалось загрузить SVG'));
+            };
+            img.src = url;
+          } catch(e) {
+            if (svg && svg.parentNode) svg.parentNode.removeChild(svg);
+            reject(e);
+          }
+        }, 30);
+      } catch(e) {
+        if (svg && svg.parentNode) svg.parentNode.removeChild(svg);
+        reject(e);
+      }
+    }, (err) => {
+      reject(new Error('Parse: ' + (err && err.message || err)));
+    });
   });
 }
 
@@ -1165,7 +1196,7 @@ const notesCanvas = $('notes-draw');
 const notesCtx = notesCanvas.getContext('2d');
 
 /* ============================================================
-   ЧИПЫ
+   ЧИПЫ + РЕЖИМЫ
    ============================================================ */
 CLASSES.forEach(c => {
   const btn = document.createElement('button');
@@ -1283,10 +1314,17 @@ function setupCanvas() {
     const sx = w / oldW, sy = h / oldH;
     const scale = arr => {
       for (const s of arr) {
-        if (s.points) for (const p of s.points) { p.x *= sx; p.y *= sy; }
-        if (s.from) { s.from.x *= sx; s.from.y *= sy; }
-        if (s.to) { s.to.x *= sx; s.to.y *= sy; }
-        s.width *= Math.sqrt(sx * sy);
+        if (s.type === 'formula') {
+          s.x *= sx; s.y *= sy;
+          s.w *= sx; s.h *= sy;
+        } else if (s.grid) {
+          s.from.x *= sx; s.from.y *= sy;
+          s.to.x *= sx; s.to.y *= sy;
+          s.width *= Math.sqrt(sx * sy);
+        } else if (s.points) {
+          for (const p of s.points) { p.x *= sx; p.y *= sy; }
+          s.width *= Math.sqrt(sx * sy);
+        }
       }
     };
     scale(state.strokes);
@@ -1301,8 +1339,25 @@ function setupCanvas() {
   if (state.answerShown) renderOverlay();
 }
 function getPos(e) { const r = drawCanvas.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
-function deepClone(obj) { if (typeof structuredClone === 'function') return structuredClone(obj); return JSON.parse(JSON.stringify(obj)); }
-function snapshot(arr, undoStack) { undoStack.push(deepClone(arr)); if (undoStack.length > 50) undoStack.shift(); }
+
+function snapshotStrokes(strokes) {
+  return strokes.map(s => {
+    if (s.type === 'formula') {
+      return { type: 'formula', img: s.img, x: s.x, y: s.y, w: s.w, h: s.h };
+    }
+    return {
+      tool: s.tool, width: s.width, color: s.color,
+      points: s.points ? s.points.map(p => ({ x: p.x, y: p.y })) : undefined,
+      grid: s.grid,
+      from: s.from ? { x: s.from.x, y: s.from.y } : undefined,
+      to: s.to ? { x: s.to.x, y: s.to.y } : undefined,
+    };
+  });
+}
+function snapshot(arr, undoStack) {
+  undoStack.push(snapshotStrokes(arr));
+  if (undoStack.length > 50) undoStack.shift();
+}
 
 const GRID_STEP = 24;
 function snapToGrid(p) {
@@ -1372,9 +1427,10 @@ function redraw() {
   drawCtx.setTransform(1, 0, 0, 1, 0, 0);
   drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
   drawCtx.restore();
+
   const dpr = window.devicePixelRatio || 1;
   const W = drawCanvas.width / dpr, H = drawCanvas.height / dpr;
-  // сетка
+
   if (state.gridMode) {
     drawCtx.save();
     drawCtx.fillStyle = '#e2e8f0';
@@ -1387,7 +1443,13 @@ function redraw() {
     }
     drawCtx.restore();
   }
+
   for (const stroke of state.strokes) {
+    if (stroke.type === 'formula') {
+      try { drawCtx.drawImage(stroke.img, stroke.x, stroke.y, stroke.w, stroke.h); }
+      catch(e) { console.warn('drawImage failed', e); }
+      continue;
+    }
     drawCtx.save();
     drawCtx.globalCompositeOperation = stroke.tool === 'eraser' ? 'destination-out' : 'source-over';
     drawCtx.strokeStyle = stroke.color;
@@ -1433,7 +1495,7 @@ document.querySelectorAll('.tool-btn[data-tool]').forEach(btn => {
 });
 
 /* ============================================================
-   ХОТСВАП: текстовая формула
+   ХОТСВАП + СЕТКА
    ============================================================ */
 $('toggle-formula-btn').addEventListener('click', () => {
   state.formulaMode = !state.formulaMode;
@@ -1467,17 +1529,18 @@ async function handleFormulaDraw() {
   const size = Math.min(W, H) * 0.8;
   const x = (W - size) / 2, y = (H - size) / 2;
   try {
-    await drawSmilesOnCanvas(smiles, drawCtx, x, y, size, size);
+    const img = await renderSmilesToImage(smiles, size, size);
+    snapshot(state.strokes, state.undoStack);
+    state.strokes.push({ type: 'formula', img, x, y, w: size, h: size });
+    redraw();
     $('formula-input').value = '';
-    state.undoStack.push(deepClone(state.strokes));
-    if (state.undoStack.length > 50) state.undoStack.shift();
   } catch(e) {
-    $('formula-error').textContent = 'Ошибка отрисовки.';
+    console.error('Formula draw error:', e);
+    $('formula-error').textContent = 'Ошибка: ' + (e.message || 'неизвестная');
     $('formula-error').hidden = false;
   }
 }
 
-// Хоткей E (на десктопе)
 window.addEventListener('keydown', e => {
   if (e.key.toLowerCase() !== 'e') return;
   if (e.ctrlKey || e.metaKey || e.altKey) return;
