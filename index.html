@@ -984,8 +984,6 @@ const CONDITION_DISTRACTORS = [
    ============================================================ */
 function formulaToSmiles(text) {
   if (!text || typeof text !== 'string') return null;
-  function formulaToSmiles(text) {
-  if (!text || typeof text !== 'string') return null;
 
   // Подстрочные индексы → обычные цифры (CH₃ → CH3)
   const subMap = {'₀':'0','₁':'1','₂':'2','₃':'3','₄':'4','₅':'5','₆':'6','₇':'7','₈':'8','₉':'9'};
@@ -995,10 +993,6 @@ function formulaToSmiles(text) {
   s = s.replace(/≡/g, '#').replace(/==/g, '=');
   s = s.replace(/\s+/g, '').toUpperCase();
 
-  if (!s) return null;
-  // ... дальше по коду идёт `const simple = {...};`
-  s = s.replace(/\s+/g, '');
-  s = s.replace(/≡/g, '#').replace(/==/g, '=').replace(/[–—]/g, '-');
   if (!s) return null;
 
   const simple = {
@@ -1049,6 +1043,7 @@ function tokenizeFormula(s) {
   }
   return tokens;
 }
+
 function parseFragmentToSmiles(frag) {
   const simple = {
     'CH4': 'C', 'CH3': 'C', 'CH2': 'C', 'CH': 'C', 'C': 'C',
@@ -1108,7 +1103,7 @@ function parseSmilesTokens(tokens) {
 }
 
 /* ============================================================
-   SMILES → IMAGE (для хотсвапа)
+   SMILES → IMAGE
    ============================================================ */
 function renderSmilesToImage(smiles, logicalW, logicalH) {
   return new Promise((resolve, reject) => {
@@ -1121,14 +1116,14 @@ function renderSmilesToImage(smiles, logicalW, logicalH) {
       const pw = Math.round(logicalW * dpr);
       const ph = Math.round(logicalH * dpr);
 
-      // 1) Пробуем нативный canvas Drawer — если доступен, он надёжнее
+      // 1) Нативный canvas Drawer — если доступен, он надёжнее
       if (typeof SmilesDrawer.Drawer === 'function') {
         try {
           const offscreen = document.createElement('canvas');
           offscreen.width = pw;
           offscreen.height = ph;
           const dctx = offscreen.getContext('2d');
-          dctx.scale(dpr, dpr); // логические координаты
+          dctx.scale(dpr, dpr);
           const drawer = new SmilesDrawer.Drawer({
             width: logicalW, height: logicalH, padding: 15,
           });
@@ -1141,7 +1136,7 @@ function renderSmilesToImage(smiles, logicalW, logicalH) {
         }
       }
 
-      // 2) SVG fallback: рендерим в ЖИВОЙ DOM с opacity:0.01 (не off-screen!)
+      // 2) SVG fallback: в живом DOM с opacity:0.01
       const host = document.createElement('div');
       host.style.cssText = `position:absolute;left:0;top:0;width:${pw}px;height:${ph}px;opacity:0.01;pointer-events:none;overflow:visible;z-index:1;`;
       document.body.appendChild(host);
@@ -1567,7 +1562,6 @@ async function handleFormulaDraw() {
   }
   $('formula-error').hidden = true;
 
-  // Проверим, что canvas готов
   const dpr = window.devicePixelRatio || 1;
   const W = drawCanvas.width / dpr, H = drawCanvas.height / dpr;
   console.log('[formula] canvas logical size:', W, 'x', H, 'dpr:', dpr);
@@ -1583,68 +1577,15 @@ async function handleFormulaDraw() {
   try {
     const img = await renderSmilesToImage(smiles, size, size);
     console.log('[formula] got image, pushing to strokes');
-
     snapshot(state.strokes, state.undoStack);
     state.strokes.push({ type: 'formula', img, x, y, w: size, h: size });
     redraw();
-
-    // Проверка: реально ли что-то нарисовалось
     const checkPixel = drawCtx.getImageData(
       Math.round((x + size/2) * dpr),
       Math.round((y + size/2) * dpr),
       1, 1
     ).data;
     console.log('[formula] center pixel after draw:', checkPixel);
-
-    $('formula-input').value = '';
-  } catch(e) {
-    console.error('[formula] ERROR:', e);
-    $('formula-error').textContent = 'Ошибка: ' + (e.message || 'неизвестная');
-    $('formula-error').hidden = false;
-  }
-}async function handleFormulaDraw() {
-  const text = $('formula-input').value.trim();
-  console.log('[formula] handleFormulaDraw called, text:', text);
-  if (!text) return;
-
-  const smiles = formulaToSmiles(text);
-  console.log('[formula] parsed SMILES:', smiles);
-  if (!smiles) {
-    $('formula-error').textContent = 'Не удалось разобрать. Примеры: CH3-CH3, CH3-OH, CH3-CHO, CH3-COOH, CH2=CH2';
-    $('formula-error').hidden = false;
-    return;
-  }
-  $('formula-error').hidden = true;
-
-  // Проверим, что canvas готов
-  const dpr = window.devicePixelRatio || 1;
-  const W = drawCanvas.width / dpr, H = drawCanvas.height / dpr;
-  console.log('[formula] canvas logical size:', W, 'x', H, 'dpr:', dpr);
-  if (!W || !H) {
-    $('formula-error').textContent = 'Canvas не готов. Попробуй перевернуть телефон и обратно.';
-    $('formula-error').hidden = false;
-    return;
-  }
-
-  const size = Math.min(W, H) * 0.8;
-  const x = (W - size) / 2, y = (H - size) / 2;
-
-  try {
-    const img = await renderSmilesToImage(smiles, size, size);
-    console.log('[formula] got image, pushing to strokes');
-
-    snapshot(state.strokes, state.undoStack);
-    state.strokes.push({ type: 'formula', img, x, y, w: size, h: size });
-    redraw();
-
-    // Проверка: реально ли что-то нарисовалось
-    const checkPixel = drawCtx.getImageData(
-      Math.round((x + size/2) * dpr),
-      Math.round((y + size/2) * dpr),
-      1, 1
-    ).data;
-    console.log('[formula] center pixel after draw:', checkPixel);
-
     $('formula-input').value = '';
   } catch(e) {
     console.error('[formula] ERROR:', e);
