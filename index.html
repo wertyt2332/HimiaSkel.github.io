@@ -1114,56 +1114,89 @@ function renderSmilesToImage(smiles, logicalW, logicalH) {
       const dpr = window.devicePixelRatio || 1;
       const pw = Math.round(logicalW * dpr);
       const ph = Math.round(logicalH * dpr);
-      let svg = null;
+
+      // 1) Пробуем нативный canvas Drawer — если доступен, он надёжнее
+      if (typeof SmilesDrawer.Drawer === 'function') {
+        try {
+          const offscreen = document.createElement('canvas');
+          offscreen.width = pw;
+          offscreen.height = ph;
+          const dctx = offscreen.getContext('2d');
+          dctx.scale(dpr, dpr); // логические координаты
+          const drawer = new SmilesDrawer.Drawer({
+            width: logicalW, height: logicalH, padding: 15,
+          });
+          drawer.draw(tree, offscreen, 'light', false);
+          console.log('[formula] Canvas drawer OK:', offscreen.width, 'x', offscreen.height);
+          resolve(offscreen);
+          return;
+        } catch(e) {
+          console.warn('[formula] Canvas drawer failed, falling back to SVG:', e);
+        }
+      }
+
+      // 2) SVG fallback: рендерим в ЖИВОЙ DOM с opacity:0.01 (не off-screen!)
+      const host = document.createElement('div');
+      host.style.cssText = `position:absolute;left:0;top:0;width:${pw}px;height:${ph}px;opacity:0.01;pointer-events:none;overflow:visible;z-index:1;`;
+      document.body.appendChild(host);
+
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+      svg.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink');
+      svg.setAttribute('width', String(pw));
+      svg.setAttribute('height', String(ph));
+      svg.setAttribute('viewBox', `0 0 ${logicalW} ${logicalH}`);
+      host.appendChild(svg);
+
+      const drawer = new SmilesDrawer.SvgDrawer({
+        width: logicalW, height: logicalH, padding: 15, bondThickness: 2,
+      });
       try {
-        svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-        svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
-        svg.setAttribute('width', String(pw));
-        svg.setAttribute('height', String(ph));
-        svg.setAttribute('viewBox', `0 0 ${pw} ${ph}`);
-        svg.style.cssText = `position:fixed;left:-99999px;top:0;width:${pw}px;height:${ph}px;`;
-        document.body.appendChild(svg);
-        void svg.getBoundingClientRect();
-
-        const drawer = new SmilesDrawer.SvgDrawer({
-          width: pw,
-          height: ph,
-          padding: 15 * dpr,
-          bondThickness: 2 * dpr,
-        });
         drawer.draw(tree, svg, 'light');
+      } catch(e) {
+        document.body.removeChild(host);
+        reject(new Error('Draw error: ' + e.message));
+        return;
+      }
+      void svg.getBoundingClientRect();
 
-        setTimeout(() => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          let svgStr;
           try {
-            const svgStr = new XMLSerializer().serializeToString(svg);
-            if (svg.parentNode) svg.parentNode.removeChild(svg);
-            svg = null;
+            svgStr = new XMLSerializer().serializeToString(svg);
+          } catch(e) {
+            document.body.removeChild(host);
+            reject(new Error('Serialize error: ' + e.message));
+            return;
+          }
+          document.body.removeChild(host);
+          console.log('[formula] SVG length:', svgStr ? svgStr.length : 0);
 
-            if (!svgStr || !svgStr.includes('<svg')) {
-              reject(new Error('Пустой SVG'));
+          if (!svgStr || svgStr.length < 100) {
+            reject(new Error('SVG пустой (' + (svgStr ? svgStr.length : 0) + ' байт)'));
+            return;
+          }
+
+          const blob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
+          const url = URL.createObjectURL(blob);
+          const img = new Image();
+          img.onload = () => {
+            URL.revokeObjectURL(url);
+            console.log('[formula] Image loaded:', img.naturalWidth, 'x', img.naturalHeight);
+            if (img.naturalWidth === 0) {
+              reject(new Error('Image пустой (0px)'));
               return;
             }
-            const blob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
-            const url = URL.createObjectURL(blob);
-            const img = new Image();
-            img.onload = () => {
-              URL.revokeObjectURL(url);
-              resolve(img);
-            };
-            img.onerror = () => {
-              URL.revokeObjectURL(url);
-              reject(new Error('Не удалось загрузить SVG'));
-            };
-            img.src = url;
-          } catch(e) {
-            if (svg && svg.parentNode) svg.parentNode.removeChild(svg);
-            reject(e);
-          }
-        }, 30);
-      } catch(e) {
-        if (svg && svg.parentNode) svg.parentNode.removeChild(svg);
-        reject(e);
-      }
+            resolve(img);
+          };
+          img.onerror = () => {
+            URL.revokeObjectURL(url);
+            reject(new Error('Image load failed (SVG не принят Image)'));
+          };
+          img.src = url;
+        });
+      });
     }, (err) => {
       reject(new Error('Parse: ' + (err && err.message || err)));
     });
@@ -1516,26 +1549,99 @@ $('formula-input').addEventListener('keydown', e => {
 
 async function handleFormulaDraw() {
   const text = $('formula-input').value.trim();
+  console.log('[formula] handleFormulaDraw called, text:', text);
   if (!text) return;
+
   const smiles = formulaToSmiles(text);
+  console.log('[formula] parsed SMILES:', smiles);
   if (!smiles) {
     $('formula-error').textContent = 'Не удалось разобрать. Примеры: CH3-CH3, CH3-OH, CH3-CHO, CH3-COOH, CH2=CH2';
     $('formula-error').hidden = false;
     return;
   }
   $('formula-error').hidden = true;
+
+  // Проверим, что canvas готов
   const dpr = window.devicePixelRatio || 1;
   const W = drawCanvas.width / dpr, H = drawCanvas.height / dpr;
+  console.log('[formula] canvas logical size:', W, 'x', H, 'dpr:', dpr);
+  if (!W || !H) {
+    $('formula-error').textContent = 'Canvas не готов. Попробуй перевернуть телефон и обратно.';
+    $('formula-error').hidden = false;
+    return;
+  }
+
   const size = Math.min(W, H) * 0.8;
   const x = (W - size) / 2, y = (H - size) / 2;
+
   try {
     const img = await renderSmilesToImage(smiles, size, size);
+    console.log('[formula] got image, pushing to strokes');
+
     snapshot(state.strokes, state.undoStack);
     state.strokes.push({ type: 'formula', img, x, y, w: size, h: size });
     redraw();
+
+    // Проверка: реально ли что-то нарисовалось
+    const checkPixel = drawCtx.getImageData(
+      Math.round((x + size/2) * dpr),
+      Math.round((y + size/2) * dpr),
+      1, 1
+    ).data;
+    console.log('[formula] center pixel after draw:', checkPixel);
+
     $('formula-input').value = '';
   } catch(e) {
-    console.error('Formula draw error:', e);
+    console.error('[formula] ERROR:', e);
+    $('formula-error').textContent = 'Ошибка: ' + (e.message || 'неизвестная');
+    $('formula-error').hidden = false;
+  }
+}async function handleFormulaDraw() {
+  const text = $('formula-input').value.trim();
+  console.log('[formula] handleFormulaDraw called, text:', text);
+  if (!text) return;
+
+  const smiles = formulaToSmiles(text);
+  console.log('[formula] parsed SMILES:', smiles);
+  if (!smiles) {
+    $('formula-error').textContent = 'Не удалось разобрать. Примеры: CH3-CH3, CH3-OH, CH3-CHO, CH3-COOH, CH2=CH2';
+    $('formula-error').hidden = false;
+    return;
+  }
+  $('formula-error').hidden = true;
+
+  // Проверим, что canvas готов
+  const dpr = window.devicePixelRatio || 1;
+  const W = drawCanvas.width / dpr, H = drawCanvas.height / dpr;
+  console.log('[formula] canvas logical size:', W, 'x', H, 'dpr:', dpr);
+  if (!W || !H) {
+    $('formula-error').textContent = 'Canvas не готов. Попробуй перевернуть телефон и обратно.';
+    $('formula-error').hidden = false;
+    return;
+  }
+
+  const size = Math.min(W, H) * 0.8;
+  const x = (W - size) / 2, y = (H - size) / 2;
+
+  try {
+    const img = await renderSmilesToImage(smiles, size, size);
+    console.log('[formula] got image, pushing to strokes');
+
+    snapshot(state.strokes, state.undoStack);
+    state.strokes.push({ type: 'formula', img, x, y, w: size, h: size });
+    redraw();
+
+    // Проверка: реально ли что-то нарисовалось
+    const checkPixel = drawCtx.getImageData(
+      Math.round((x + size/2) * dpr),
+      Math.round((y + size/2) * dpr),
+      1, 1
+    ).data;
+    console.log('[formula] center pixel after draw:', checkPixel);
+
+    $('formula-input').value = '';
+  } catch(e) {
+    console.error('[formula] ERROR:', e);
     $('formula-error').textContent = 'Ошибка: ' + (e.message || 'неизвестная');
     $('formula-error').hidden = false;
   }
