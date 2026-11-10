@@ -63,6 +63,11 @@ h2 { font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform
   transition: all 0.15s; margin-top: 20px;
 }
 #start-btn:active { transform: scale(0.98); background: var(--primary-dark); }
+#history-btn {
+  padding: 12px; border-radius: 14px; background: var(--card); color: var(--text);
+  font-size: 15px; font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  margin-top: 10px;
+}
 
 /* ===== SHARED ===== */
 .train-header { display: flex; align-items: center; gap: 10px; min-height: 40px; }
@@ -85,7 +90,7 @@ h2 { font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform
   font-size: 13px; opacity: 0.92; margin-top: 6px; line-height: 1.35;
   font-weight: 500; word-break: break-word;
 }
-.toolbar { display: flex; gap: 8px; justify-content: center; }
+.toolbar { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
 .tool-btn {
   width: 44px; height: 44px; border-radius: 12px; background: var(--card);
   display: flex; align-items: center; justify-content: center; font-size: 20px;
@@ -106,7 +111,9 @@ h2 { font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform
 #train-screen .train-header,
 #train-screen .task-card,
 #train-screen .toolbar,
-#train-screen .actions { flex-shrink: 0; }
+#train-screen .actions,
+#train-screen #formula-input-wrap,
+#train-screen #formula-error { flex-shrink: 0; }
 #canvas-wrap {
   flex: 1 1 auto; width: 100%; min-height: 200px;
   position: relative; background: white; border-radius: 14px;
@@ -120,6 +127,21 @@ h2 { font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform
   pointer-events: none; opacity: 0; transition: opacity 0.3s;
 }
 #overlay.visible { opacity: 0.55; }
+#formula-input-wrap { display: flex; gap: 8px; }
+#formula-input {
+  flex: 1; padding: 10px 12px; border: 2px solid var(--border);
+  border-radius: 10px; font-size: 15px; outline: none;
+  font-family: inherit; color: var(--text);
+}
+#formula-input:focus { border-color: var(--primary); }
+#formula-draw {
+  padding: 10px 14px; border-radius: 10px; background: var(--primary);
+  color: white; font-weight: 700; font-size: 14px;
+}
+#formula-error {
+  color: var(--error); font-size: 12px; padding: 4px 8px;
+  text-align: center;
+}
 
 /* ===== BALANCE ===== */
 #balance-screen { padding: 10px; gap: 8px; overflow-y: auto; }
@@ -137,9 +159,7 @@ h2 { font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform
   border: 1.5px dashed #cbd5e1; border-radius: 8px;
   font-size: 15px; color: #94a3b8; font-weight: 700; padding: 0 6px;
 }
-.coeff-slot.filled { border-style: solid; border-color: var(--primary); color: var(--primary); background: #faf5ff; }
 .coeff-slot.correct { border-color: var(--success); color: var(--success); background: #f0fdf4; }
-.coeff-slot.wrong { border-color: var(--error); color: var(--error); background: #fef2f2; }
 .species { font-size: 16px; font-weight: 600; }
 .plus-sign { font-size: 16px; color: #64748b; font-weight: 600; padding: 0 2px; }
 .eq-arrow { text-align: center; font-size: 22px; color: var(--primary); padding: 2px 0; font-weight: 700; }
@@ -219,25 +239,13 @@ h2 { font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform
   min-width: 40px; text-align: center;
   transition: all 0.2s;
 }
-.condition-display.filled {
-  border-style: solid;
-  background: #ede9fe;
-}
 .condition-display.correct {
   border-style: solid;
   border-color: var(--success);
   background: #f0fdf4;
   color: #065f46;
 }
-.condition-display.wrong {
-  border-style: solid;
-  border-color: var(--error);
-  background: #fef2f2;
-  color: #991b1b;
-}
-.arrow-symbol {
-  font-size: 22px; color: var(--primary); font-weight: 700;
-}
+.arrow-symbol { font-size: 22px; color: var(--primary); font-weight: 700; }
 .options-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -261,18 +269,28 @@ h2 { font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform
   line-height: 1.25;
 }
 .option-btn:active { transform: scale(0.97); }
-.option-btn.correct {
-  background: #f0fdf4;
-  border-color: var(--success);
-  color: #065f46;
-}
-.option-btn.wrong {
-  background: #fef2f2;
-  border-color: var(--error);
-  color: #991b1b;
-}
+.option-btn.correct { background: #f0fdf4; border-color: var(--success); color: #065f46; }
+.option-btn.wrong { background: #fef2f2; border-color: var(--error); color: #991b1b; }
 .option-btn:disabled { cursor: default; }
 .option-btn:disabled:not(.correct):not(.wrong) { opacity: 0.5; }
+
+/* ===== HISTORY ===== */
+#history-screen { padding: 10px; gap: 8px; overflow-y: auto; }
+#history-list { display: flex; flex-direction: column; gap: 8px; }
+.history-item {
+  background: white; border-radius: 12px; padding: 10px 12px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  border-left: 4px solid var(--border);
+}
+.history-item.correct { border-left-color: var(--success); }
+.history-item.wrong { border-left-color: var(--error); }
+.history-mode {
+  font-size: 11px; color: var(--text-muted); text-transform: uppercase;
+  font-weight: 700; letter-spacing: 0.5px; margin-bottom: 4px;
+}
+.history-task { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+.history-answer { font-size: 12px; color: var(--text-muted); line-height: 1.5; }
+.history-time { font-size: 11px; color: #9ca3af; margin-top: 6px; }
 </style>
 </head>
 <body>
@@ -318,6 +336,7 @@ h2 { font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform
   <div class="chips" id="chips"></div>
 
   <button id="start-btn">Начать тренировку</button>
+  <button id="history-btn">📋 История ответов</button>
 </div>
 
 <!-- ===== TRAIN ===== -->
@@ -331,6 +350,11 @@ h2 { font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform
     <div class="task-name" id="task-name">—</div>
     <div class="task-equation" id="task-equation" hidden></div>
   </div>
+  <div id="formula-input-wrap" hidden>
+    <input type="text" id="formula-input" placeholder="CH3-CH3, CH3-CH2-OH, CH3-COOH…" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+    <button id="formula-draw">→</button>
+  </div>
+  <div id="formula-error" hidden></div>
   <div id="canvas-wrap">
     <canvas id="draw"></canvas>
     <svg id="overlay" xmlns="http://www.w3.org/2000/svg"></svg>
@@ -340,6 +364,8 @@ h2 { font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform
     <button class="tool-btn" data-tool="eraser">🧽</button>
     <button class="tool-btn" id="undo-btn">↶</button>
     <button class="tool-btn" id="clear-btn">🗑</button>
+    <button class="tool-btn" id="toggle-formula-btn" title="Текстовый ввод (E)">⌨️</button>
+    <button class="tool-btn" id="toggle-grid-btn" title="Сетка">📐</button>
   </div>
   <div class="actions">
     <button class="btn btn-secondary" id="answer-btn">Показать ответ</button>
@@ -372,9 +398,7 @@ h2 { font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform
   <div class="balance-feedback" id="balance-feedback" hidden></div>
   <button class="notes-toggle" id="notes-toggle">📝 Заметки</button>
   <div class="notes-wrap" id="notes-wrap" hidden>
-    <div id="notes-canvas-wrap">
-      <canvas id="notes-draw"></canvas>
-    </div>
+    <div id="notes-canvas-wrap"><canvas id="notes-draw"></canvas></div>
     <div class="toolbar">
       <button class="tool-btn active" data-note-tool="pen">✏️</button>
       <button class="tool-btn" data-note-tool="eraser">🧽</button>
@@ -396,9 +420,7 @@ h2 { font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform
   <div class="task-card naming-card">
     <div class="task-label">Назови соединение по ИЮПАК:</div>
   </div>
-  <div id="naming-svg-wrap">
-    <svg id="naming-svg" xmlns="http://www.w3.org/2000/svg"></svg>
-  </div>
+  <div id="naming-svg-wrap"><svg id="naming-svg" xmlns="http://www.w3.org/2000/svg"></svg></div>
   <div class="balance-input-wrap">
     <input type="text" id="naming-input" placeholder="Название соединения" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
     <button id="naming-check">Проверить</button>
@@ -431,6 +453,19 @@ h2 { font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform
   <div class="balance-feedback" id="conditions-feedback" hidden></div>
   <div class="actions">
     <button class="btn btn-primary" id="conditions-next">Далее</button>
+  </div>
+</div>
+
+<!-- ===== HISTORY ===== -->
+<div class="screen" id="history-screen">
+  <div class="train-header">
+    <button class="icon-btn" id="history-back-btn">←</button>
+    <div class="stats" id="history-stats"></div>
+  </div>
+  <h2 style="margin:0 0 8px;">История ответов</h2>
+  <div id="history-list"></div>
+  <div class="actions" style="margin-top: 12px;">
+    <button class="btn btn-error" id="history-clear">Очистить историю</button>
   </div>
 </div>
 
@@ -471,13 +506,71 @@ function getAcceptableAnswers(compound) {
   if (m) {
     answers.add(normalizeName(m[1]));
     m[2].split(',').forEach(part => {
-      const trimmed = part.trim();
-      if (trimmed) answers.add(normalizeName(trimmed));
+      const t = part.trim();
+      if (t) answers.add(normalizeName(t));
     });
   }
-  const posMatch = name.match(/^(.+?)-(\d+)$/);
-  if (posMatch) answers.add(normalizeName(`${posMatch[2]}-${posMatch[1]}`));
+  const pos = name.match(/^(.+?)-(\d+)$/);
+  if (pos) answers.add(normalizeName(`${pos[2]}-${pos[1]}`));
   return answers;
+}
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+/* ============================================================
+   ИСТОРИЯ
+   ============================================================ */
+const HISTORY_KEY = 'skeletal_history';
+const HISTORY_MAX = 200;
+function loadHistory() {
+  try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); }
+  catch { return []; }
+}
+function saveHistoryItem(item) {
+  const h = loadHistory();
+  h.unshift(item);
+  if (h.length > HISTORY_MAX) h.length = HISTORY_MAX;
+  try { localStorage.setItem(HISTORY_KEY, JSON.stringify(h)); } catch {}
+}
+function clearHistoryStore() {
+  try { localStorage.removeItem(HISTORY_KEY); } catch {}
+}
+function formatTime(ts) {
+  const d = new Date(ts);
+  const pad = n => String(n).padStart(2, '0');
+  return `${pad(d.getDate())}.${pad(d.getMonth()+1)} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+function renderHistory() {
+  const list = $('history-list');
+  const h = loadHistory();
+  if (!h.length) {
+    list.innerHTML = '<div style="text-align:center; color:var(--text-muted); padding:30px;">История пуста</div>';
+    $('history-stats').textContent = '';
+    return;
+  }
+  const correct = h.filter(x => x.correct).length;
+  const acc = Math.round(correct / h.length * 100);
+  $('history-stats').textContent = `${correct}/${h.length} (${acc}%)`;
+  list.innerHTML = '';
+  h.forEach(item => {
+    const el = document.createElement('div');
+    el.className = 'history-item ' + (item.correct ? 'correct' : 'wrong');
+    let answerLine = '';
+    if (item.correct) {
+      answerLine = '✓ Верно';
+    } else {
+      answerLine = `✗ Твой: ${escapeHtml(item.userAnswer || '—')}`;
+      if (item.correctAnswer) answerLine += `<br>Правильный: ${escapeHtml(item.correctAnswer)}`;
+    }
+    el.innerHTML = `
+      <div class="history-mode">${escapeHtml(item.mode)}</div>
+      <div class="history-task">${escapeHtml(item.task)}</div>
+      <div class="history-answer">${answerLine}</div>
+      <div class="history-time">${formatTime(item.timestamp)}</div>
+    `;
+    list.appendChild(el);
+  });
 }
 
 /* ============================================================
@@ -503,9 +596,6 @@ const CLASSES = [
   { key: 'conditions',   label: 'Условия', special: true },
 ];
 
-/* ============================================================
-   СОЕДИНЕНИЯ
-   ============================================================ */
 const COMPOUNDS = {
   alkanes: [
     { name: 'Метан', smiles: 'C' }, { name: 'Этан', smiles: 'CC' },
@@ -678,7 +768,6 @@ const COMPOUNDS = {
    РЕАКЦИИ
    ============================================================ */
 const REACTIONS = [];
-
 function genCombustion(category, formula, name, coeffs) {
   REACTIONS.push({
     category, label: `Горение ${name.toLowerCase()}`,
@@ -688,159 +777,146 @@ function genCombustion(category, formula, name, coeffs) {
   });
 }
 for (let n = 1; n <= 10; n++) {
-  const formula = n === 1 ? 'CH₄' : `C${sub(n)}H${sub(2*n+2)}`;
-  genCombustion('alkanes', formula, STEMS[n] + 'ан', [2, 3*n+1, 2*n, 2*(n+1)]);
+  const f = n === 1 ? 'CH₄' : `C${sub(n)}H${sub(2*n+2)}`;
+  genCombustion('alkanes', f, STEMS[n] + 'ан', [2, 3*n+1, 2*n, 2*(n+1)]);
 }
 const CYCLO_NAMES = {3:'циклопропан',4:'циклобутан',5:'циклопентан',6:'циклогексан',7:'циклогептан',8:'циклооктан'};
 for (let n = 3; n <= 8; n++) genCombustion('cycloalkanes', `C${sub(n)}H${sub(2*n)}`, CYCLO_NAMES[n], [2, 3*n, 2*n, 2*n]);
 for (let n = 2; n <= 10; n++) genCombustion('alkenes', `C${sub(n)}H${sub(2*n)}`, STEMS[n] + 'ен', [2, 3*n, 2*n, 2*n]);
 for (let n = 2; n <= 10; n++) genCombustion('alkynes', `C${sub(n)}H${sub(2*n-2)}`, STEMS[n] + 'ин', [2, 3*n-1, 2*n, 2*(n-1)]);
 for (let n = 1; n <= 8; n++) {
-  const formula = n === 1 ? 'CH₃OH' : `C${sub(n)}H${sub(2*n+1)}OH`;
-  genCombustion('alcohols', formula, STEMS[n] + 'анол-1', [2, 3*n, 2*n, 2*(n+1)]);
+  const f = n === 1 ? 'CH₃OH' : `C${sub(n)}H${sub(2*n+1)}OH`;
+  genCombustion('alcohols', f, STEMS[n] + 'анол-1', [2, 3*n, 2*n, 2*(n+1)]);
 }
 const ALD_NAMES = {1:'метаналь',2:'этаналь',3:'пропаналь',4:'бутаналь',5:'пентаналь',6:'гексаналь'};
 for (let n = 1; n <= 6; n++) {
-  let formula;
-  if (n === 1) formula = 'HCHO';
-  else if (n === 2) formula = 'CH₃CHO';
-  else formula = `C${sub(n-1)}H${sub(2*n-1)}CHO`;
-  genCombustion('aldehydes', formula, ALD_NAMES[n], [2, 3*n-1, 2*n, 2*n]);
+  let f;
+  if (n === 1) f = 'HCHO';
+  else if (n === 2) f = 'CH₃CHO';
+  else f = `C${sub(n-1)}H${sub(2*n-1)}CHO`;
+  genCombustion('aldehydes', f, ALD_NAMES[n], [2, 3*n-1, 2*n, 2*n]);
 }
 const ACD_NAMES = {1:'метановая кислота',2:'этановая кислота',3:'пропановая кислота',4:'бутановая кислота',5:'пентановая кислота',6:'гексановая кислота'};
 for (let n = 1; n <= 6; n++) {
-  let formula;
-  if (n === 1) formula = 'HCOOH';
-  else if (n === 2) formula = 'CH₃COOH';
-  else formula = `C${sub(n-1)}H${sub(2*n-1)}COOH`;
-  genCombustion('acids', formula, ACD_NAMES[n], [2, 3*n-2, 2*n, 2*n]);
+  let f;
+  if (n === 1) f = 'HCOOH';
+  else if (n === 2) f = 'CH₃COOH';
+  else f = `C${sub(n-1)}H${sub(2*n-1)}COOH`;
+  genCombustion('acids', f, ACD_NAMES[n], [2, 3*n-2, 2*n, 2*n]);
 }
 for (let n = 3; n <= 8; n++) {
-  const formula = n === 3 ? 'CH₃COCH₃' : `C${sub(n)}H${sub(2*n)}O`;
-  genCombustion('ketones', formula, `${STEMS[n]}анон-2`, [2, 3*n-1, 2*n, 2*n]);
+  const f = n === 3 ? 'CH₃COCH₃' : `C${sub(n)}H${sub(2*n)}O`;
+  genCombustion('ketones', f, `${STEMS[n]}анон-2`, [2, 3*n-1, 2*n, 2*n]);
 }
 [
-  {f: 'C₆H₆',  n: 'бензол',    c: [2,15,12,6]},
-  {f: 'C₇H₈',  n: 'толуол',    c: [1,9,7,4]},
-  {f: 'C₈H₁₀', n: 'ксилол',    c: [2,21,16,10]},
-  {f: 'C₈H₁₀', n: 'этилбензол',c: [2,21,16,10]},
-  {f: 'C₈H₈',  n: 'стирол',    c: [1,10,8,4]},
-  {f: 'C₁₀H₈', n: 'нафталин',  c: [1,12,10,4]},
-].forEach(({f, n, c}) => genCombustion('arenes', f, n, c));
+  {f:'C₆H₆',n:'бензол',c:[2,15,12,6]},{f:'C₇H₈',n:'толуол',c:[1,9,7,4]},
+  {f:'C₈H₁₀',n:'ксилол',c:[2,21,16,10]},{f:'C₈H₁₀',n:'этилбензол',c:[2,21,16,10]},
+  {f:'C₈H₈',n:'стирол',c:[1,10,8,4]},{f:'C₁₀H₈',n:'нафталин',c:[1,12,10,4]},
+].forEach(({f,n,c}) => genCombustion('arenes', f, n, c));
 
 const RADICALS = [
-  {name: 'метил', formula: 'CH₃Cl', c: 1}, {name: 'этил', formula: 'C₂H₅Cl', c: 2},
-  {name: 'пропил', formula: 'C₃H₇Cl', c: 3}, {name: 'бутил', formula: 'C₄H₉Cl', c: 4},
+  {name:'метил',formula:'CH₃Cl',c:1},{name:'этил',formula:'C₂H₅Cl',c:2},
+  {name:'пропил',formula:'C₃H₇Cl',c:3},{name:'бутил',formula:'C₄H₉Cl',c:4},
 ];
-for (let i = 0; i < RADICALS.length; i++) {
-  for (let j = i; j < RADICALS.length; j++) {
-    const r1 = RADICALS[i], r2 = RADICALS[j];
-    const totalC = r1.c + r2.c;
-    const productFormula = `C${sub(totalC)}H${sub(2*totalC+2)}`;
-    const isSame = i === j;
-    const species = isSame
-      ? [r1.formula, 'Na', productFormula, 'NaCl']
-      : [r1.formula, r2.formula, 'Na', productFormula, 'NaCl'];
-    const coeffs = isSame ? [2, 2, 1, 2] : [1, 1, 2, 1, 2];
-    REACTIONS.push({
-      category: 'alkanes',
-      label: `Реакция Вюрца (${r1.name}${isSame ? '' : '+' + r2.name})`,
-      species, coeffs, arrowAt: isSame ? 2 : 3, conditions: 't°',
-      forDrawing: false, forBalance: true,
-    });
-  }
+for (let i = 0; i < RADICALS.length; i++) for (let j = i; j < RADICALS.length; j++) {
+  const r1 = RADICALS[i], r2 = RADICALS[j];
+  const t = r1.c + r2.c;
+  const prod = `C${sub(t)}H${sub(2*t+2)}`;
+  const same = i === j;
+  const species = same ? [r1.formula,'Na',prod,'NaCl'] : [r1.formula,r2.formula,'Na',prod,'NaCl'];
+  const coeffs = same ? [2,2,1,2] : [1,1,2,1,2];
+  REACTIONS.push({
+    category:'alkanes',
+    label:`Реакция Вюрца (${r1.name}${same?'':'+'+r2.name})`,
+    species, coeffs, arrowAt: same ? 2 : 3, conditions:'t°',
+    forDrawing:false, forBalance:true,
+  });
 }
 
-const EST_ACIDS = [
-  {formula: 'HCOOH', esterStem: 'метаноат'}, {formula: 'CH₃COOH', esterStem: 'этаноат'},
-  {formula: 'C₂H₅COOH', esterStem: 'пропаноат'},
-];
-const EST_ALCOHOLS = [
-  {formula: 'CH₃OH', name: 'метиловый'}, {formula: 'C₂H₅OH', name: 'этиловый'},
-  {formula: 'C₃H₇OH', name: 'пропиловый'}, {formula: 'C₄H₉OH', name: 'бутиловый'},
-];
+const EST_ACIDS = [{f:'HCOOH',s:'метаноат'},{f:'CH₃COOH',s:'этаноат'},{f:'C₂H₅COOH',s:'пропаноат'}];
+const EST_ALCOHOLS = [{f:'CH₃OH',n:'метиловый'},{f:'C₂H₅OH',n:'этиловый'},{f:'C₃H₇OH',n:'пропиловый'},{f:'C₄H₉OH',n:'бутиловый'}];
 for (const a of EST_ACIDS) for (const al of EST_ALCOHOLS) {
-  const ester = `${al.name} ${a.esterStem}`;
+  const ester = `${al.n} ${a.s}`;
   REACTIONS.push({
-    category: 'esters', label: `Этерификация (${ester})`,
-    species: [a.formula, al.formula, ester.replace(' ', ''), 'H₂O'],
-    coeffs: [1,1,1,1], arrowAt: 2, conditions: 'H₂SO₄, t°',
-    forDrawing: false, forBalance: true,
+    category:'esters', label:`Этерификация (${ester})`,
+    species:[a.f,al.f,ester.replace(' ',''),'H₂O'],
+    coeffs:[1,1,1,1], arrowAt:2, conditions:'H₂SO₄, t°',
+    forDrawing:false, forBalance:true,
   });
 }
 
 const HARDCODE_REACTIONS = [
-  { cat:'alkanes', label:'Хлорирование метана', species:['CH₄','Cl₂','CH₃Cl','HCl'], coeffs:[1,1,1,1], arrowAt:2, cond:'hν' },
-  { cat:'alkanes', label:'Хлорирование этана', species:['C₂H₆','Cl₂','C₂H₅Cl','HCl'], coeffs:[1,1,1,1], arrowAt:2, cond:'hν' },
-  { cat:'alkanes', label:'Дегидрирование этана', species:['C₂H₆','C₂H₄','H₂'], coeffs:[1,1,1], arrowAt:1, cond:'t°, Ni' },
-  { cat:'alkanes', label:'Дегидрирование пропана', species:['C₃H₈','C₃H₆','H₂'], coeffs:[1,1,1], arrowAt:1, cond:'t°, Ni' },
-  { cat:'alkanes', label:'Крекинг бутана', species:['C₄H₁₀','C₂H₆','C₂H₄'], coeffs:[1,1,1], arrowAt:1, cond:'t°, кат.' },
-  { cat:'alkanes', label:'Пиролиз метана (1500°C)', species:['CH₄','C₂H₂','H₂'], coeffs:[2,1,3], arrowAt:1, cond:'1500°C' },
-  { cat:'alkanes', label:'Пиролиз метана (1000°C)', species:['CH₄','C','H₂'], coeffs:[1,1,2], arrowAt:1, cond:'1000°C' },
-  { cat:'alkenes', label:'Гидрирование этена', species:['C₂H₄','H₂','C₂H₆'], coeffs:[1,1,1], arrowAt:2, cond:'Ni, t°' },
-  { cat:'alkenes', label:'Гидрирование пропена', species:['C₃H₆','H₂','C₃H₈'], coeffs:[1,1,1], arrowAt:2, cond:'Ni, t°' },
-  { cat:'alkenes', label:'Бромирование этена', species:['C₂H₄','Br₂','C₂H₄Br₂'], coeffs:[1,1,1], arrowAt:2, cond:'CCl₄' },
-  { cat:'alkenes', label:'Хлорирование пропена', species:['C₃H₆','Cl₂','C₃H₆Cl₂'], coeffs:[1,1,1], arrowAt:2, cond:'CCl₄' },
-  { cat:'alkenes', label:'Гидрохлорирование этена', species:['C₂H₄','HCl','C₂H₅Cl'], coeffs:[1,1,1], arrowAt:2, cond:'кат.' },
-  { cat:'alkenes', label:'Гидратация этена', species:['C₂H₄','H₂O','C₂H₅OH'], coeffs:[1,1,1], arrowAt:2, cond:'H⁺' },
-  { cat:'alkenes', label:'Гидратация пропена', species:['C₃H₆','H₂O','C₃H₇OH'], coeffs:[1,1,1], arrowAt:2, cond:'H⁺' },
-  { cat:'alkenes', label:'Мягкое окисление этена KMnO₄', species:['C₂H₄','KMnO₄','H₂O','C₂H₆O₂','MnO₂','KOH'], coeffs:[3,2,4,3,2,2], arrowAt:3, cond:'0°C' },
-  { cat:'alkenes', label:'Полимеризация этена', species:['C₂H₄','(C₂H₄)ₙ'], coeffs:[1,1], arrowAt:1, cond:'кат., p, t°' },
-  { cat:'alkynes', label:'Гидрирование ацетилена (полное)', species:['C₂H₂','H₂','C₂H₆'], coeffs:[1,2,1], arrowAt:2, cond:'Ni, t°' },
-  { cat:'alkynes', label:'Гидрирование ацетилена (частичное)', species:['C₂H₂','H₂','C₂H₄'], coeffs:[1,1,1], arrowAt:2, cond:'Ni, t°' },
-  { cat:'alkynes', label:'Гидрохлорирование ацетилена', species:['C₂H₂','HCl','C₂H₃Cl'], coeffs:[1,1,1], arrowAt:2, cond:'кат.' },
-  { cat:'alkynes', label:'Гидратация ацетилена (Кучеров)', species:['C₂H₂','H₂O','CH₃CHO'], coeffs:[1,1,1], arrowAt:2, cond:'Hg²⁺, H⁺' },
-  { cat:'alkynes', label:'Тримеризация ацетилена', species:['C₂H₂','C₆H₆'], coeffs:[3,1], arrowAt:1, cond:'Cакт, 600°C' },
-  { cat:'alkynes', label:'Димеризация ацетилена', species:['C₂H₂','C₄H₄'], coeffs:[2,1], arrowAt:1, cond:'CuCl, NH₄Cl' },
-  { cat:'arenes', label:'Нитрование бензола', species:['C₆H₆','HNO₃','C₆H₅NO₂','H₂O'], coeffs:[1,1,1,1], arrowAt:2, cond:'H₂SO₄' },
-  { cat:'arenes', label:'Хлорирование бензола', species:['C₆H₆','Cl₂','C₆H₅Cl','HCl'], coeffs:[1,1,1,1], arrowAt:2, cond:'FeCl₃' },
-  { cat:'arenes', label:'Алкилирование бензола', species:['C₆H₆','C₂H₅Cl','C₆H₅C₂H₅','HCl'], coeffs:[1,1,1,1], arrowAt:2, cond:'AlCl₃' },
-  { cat:'arenes', label:'Гидрирование бензола', species:['C₆H₆','H₂','C₆H₁₂'], coeffs:[1,3,1], arrowAt:2, cond:'Ni, t°, p' },
-  { cat:'arenes', label:'Окисление толуола KMnO₄', species:['C₆H₅CH₃','KMnO₄','H₂SO₄','C₆H₅COOH','MnSO₄','K₂SO₄','H₂O'], coeffs:[5,6,9,5,6,3,14], arrowAt:3, cond:'H⁺, t°' },
-  { cat:'alcohols', label:'Дегидратация этанола', species:['C₂H₅OH','C₂H₄','H₂O'], coeffs:[1,1,1], arrowAt:1, cond:'H₂SO₄, 170°C' },
-  { cat:'alcohols', label:'Дегидратация пропанола-1', species:['C₃H₇OH','C₃H₆','H₂O'], coeffs:[1,1,1], arrowAt:1, cond:'H₂SO₄, 170°C' },
-  { cat:'alcohols', label:'Межмолекулярная дегидратация этанола', species:['C₂H₅OH','C₂H₅OC₂H₅','H₂O'], coeffs:[2,1,1], arrowAt:1, cond:'H₂SO₄, 140°C' },
-  { cat:'alcohols', label:'Окисление этанола CuO', species:['C₂H₅OH','CuO','CH₃CHO','Cu','H₂O'], coeffs:[1,1,1,1,1], arrowAt:2, cond:'CuO, t°' },
-  { cat:'alcohols', label:'Окисление метанола CuO', species:['CH₃OH','CuO','HCHO','Cu','H₂O'], coeffs:[1,1,1,1,1], arrowAt:2, cond:'CuO, t°' },
-  { cat:'alcohols', label:'Окисление этанола K₂Cr₂O₇', species:['C₂H₅OH','K₂Cr₂O₇','H₂SO₄','CH₃COOH','Cr₂(SO₄)₃','K₂SO₄','H₂O'], coeffs:[3,2,8,3,2,2,11], arrowAt:3, cond:'H⁺, t°' },
-  { cat:'alcohols', label:'Взаимодействие натрия с этанолом', species:['C₂H₅OH','Na','C₂H₅ONa','H₂'], coeffs:[2,2,2,1], arrowAt:2, cond:'t°' },
-  { cat:'alcohols', label:'Взаимодействие натрия с фенолом', species:['C₆H₅OH','Na','C₆H₅ONa','H₂'], coeffs:[2,2,2,1], arrowAt:2, cond:'t°' },
-  { cat:'aldehydes', label:'Серебряное зеркало (этаналь)', species:['CH₃CHO','Ag₂O','CH₃COOH','Ag'], coeffs:[1,1,1,2], arrowAt:2, cond:'NH₃, t°' },
-  { cat:'aldehydes', label:'Серебряное зеркало (формальдегид)', species:['HCHO','Ag₂O','CO₂','H₂O','Ag'], coeffs:[1,2,1,1,4], arrowAt:2, cond:'NH₃, t°' },
-  { cat:'aldehydes', label:'Окисление этаналя Cu(OH)₂', species:['CH₃CHO','Cu(OH)₂','CH₃COOH','Cu₂O','H₂O'], coeffs:[1,2,1,1,2], arrowAt:2, cond:'t°' },
-  { cat:'aldehydes', label:'Восстановление этаналя', species:['CH₃CHO','H₂','C₂H₅OH'], coeffs:[1,1,1], arrowAt:2, cond:'Ni, t°' },
-  { cat:'aldehydes', label:'Восстановление формальдегида', species:['HCHO','H₂','CH₃OH'], coeffs:[1,1,1], arrowAt:2, cond:'Ni, t°' },
-  { cat:'aldehydes', label:'Окисление метаналя KMnO₄', species:['HCHO','KMnO₄','H₂SO₄','CO₂','MnSO₄','K₂SO₄','H₂O'], coeffs:[5,2,3,5,2,1,8], arrowAt:3, cond:'H⁺, t°' },
-  { cat:'ketones', label:'Восстановление ацетона', species:['CH₃COCH₃','H₂','CH₃CH(OH)CH₃'], coeffs:[1,1,1], arrowAt:2, cond:'Ni, t°' },
-  { cat:'ketones', label:'Восстановление бутанона', species:['C₂H₅COCH₃','H₂','C₂H₅CH(OH)CH₃'], coeffs:[1,1,1], arrowAt:2, cond:'Ni, t°' },
-  { cat:'acids', label:'Уксусная кислота + NaOH', species:['CH₃COOH','NaOH','CH₃COONa','H₂O'], coeffs:[1,1,1,1], arrowAt:2, cond:'водн.' },
-  { cat:'acids', label:'Уксусная кислота + Na₂CO₃', species:['CH₃COOH','Na₂CO₃','CH₃COONa','CO₂','H₂O'], coeffs:[2,1,2,1,1], arrowAt:2, cond:'водн.' },
-  { cat:'acids', label:'Уксусная кислота + Mg', species:['CH₃COOH','Mg','(CH₃COO)₂Mg','H₂'], coeffs:[2,1,1,1], arrowAt:2, cond:'t°' },
-  { cat:'acids', label:'Уксусная кислота + этанол', species:['CH₃COOH','C₂H₅OH','CH₃COOC₂H₅','H₂O'], coeffs:[1,1,1,1], arrowAt:2, cond:'H₂SO₄, t°' },
-  { cat:'amines', label:'Метиламин + HCl', species:['CH₃NH₂','HCl','CH₃NH₃Cl'], coeffs:[1,1,1], arrowAt:2, cond:'водн.' },
-  { cat:'amines', label:'Анилин + HCl', species:['C₆H₅NH₂','HCl','C₆H₅NH₃Cl'], coeffs:[1,1,1], arrowAt:2, cond:'водн.' },
-  { cat:'amines', label:'Алкилирование аммиака', species:['NH₃','CH₃Cl','CH₃NH₂','HCl'], coeffs:[1,1,1,1], arrowAt:2, cond:'t°' },
-  { cat:'amines', label:'Восстановление нитробензола', species:['C₆H₅NO₂','H₂','C₆H₅NH₂','H₂O'], coeffs:[1,3,1,2], arrowAt:2, cond:'Ni, t°' },
-  { cat:'aminoacids', label:'Глицин + NaOH', species:['NH₂CH₂COOH','NaOH','NH₂CH₂COONa','H₂O'], coeffs:[1,1,1,1], arrowAt:2, cond:'водн.' },
-  { cat:'aminoacids', label:'Глицин + HCl', species:['NH₂CH₂COOH','HCl','ClNH₃CH₂COOH'], coeffs:[1,1,1], arrowAt:2, cond:'водн.' },
-  { cat:'halides', label:'Гидролиз хлорметана', species:['CH₃Cl','NaOH','CH₃OH','NaCl'], coeffs:[1,1,1,1], arrowAt:2, cond:'водн.' },
-  { cat:'halides', label:'Дегидрогалогенирование хлорэтана', species:['C₂H₅Cl','KOH','C₂H₄','KCl','H₂O'], coeffs:[1,1,1,1,1], arrowAt:2, cond:'спирт, t°' },
-  { cat:'halides', label:'Хлорметан + Na (Вюрц)', species:['CH₃Cl','Na','C₂H₆','NaCl'], coeffs:[2,2,1,2], arrowAt:2, cond:'t°' },
-  { cat:'alkanes', label:'Горение угля', species:['C','O₂','CO₂'], coeffs:[1,1,1], arrowAt:2, cond:'t°' },
-  { cat:'alkanes', label:'Горение серы', species:['S','O₂','SO₂'], coeffs:[1,1,1], arrowAt:2, cond:'t°' },
-  { cat:'alkanes', label:'Горение фосфора', species:['P','O₂','P₂O₅'], coeffs:[4,5,2], arrowAt:2, cond:'t°' },
-  { cat:'alkanes', label:'Горение магния', species:['Mg','O₂','MgO'], coeffs:[2,1,2], arrowAt:2, cond:'t°' },
-  { cat:'alkanes', label:'Горение железа', species:['Fe','O₂','Fe₂O₃'], coeffs:[4,3,2], arrowAt:2, cond:'t°' },
-  { cat:'alkanes', label:'Горение натрия', species:['Na','O₂','Na₂O'], coeffs:[4,1,2], arrowAt:2, cond:'t°' },
-  { cat:'alkanes', label:'Разложение перекиси водорода', species:['H₂O₂','H₂O','O₂'], coeffs:[2,2,1], arrowAt:1, cond:'MnO₂' },
-  { cat:'alkanes', label:'Разложение карбоната кальция', species:['CaCO₃','CaO','CO₂'], coeffs:[1,1,1], arrowAt:1, cond:'t°' },
-  { cat:'alkanes', label:'Разложение бертолетовой соли', species:['KClO₃','KCl','O₂'], coeffs:[2,2,3], arrowAt:1, cond:'MnO₂, t°' },
-  { cat:'alkanes', label:'Цинк + HCl', species:['Zn','HCl','ZnCl₂','H₂'], coeffs:[1,2,1,1], arrowAt:2, cond:'водн.' },
-  { cat:'alkanes', label:'Алюминий + HCl', species:['Al','HCl','AlCl₃','H₂'], coeffs:[2,6,2,3], arrowAt:2, cond:'водн.' },
-  { cat:'alkanes', label:'Алюминотермия', species:['Al','Fe₂O₃','Al₂O₃','Fe'], coeffs:[2,1,1,2], arrowAt:2, cond:'t°' },
-  { cat:'alkanes', label:'Нейтрализация NaOH + HCl', species:['NaOH','HCl','NaCl','H₂O'], coeffs:[1,1,1,1], arrowAt:2, cond:'водн.' },
-  { cat:'alkanes', label:'Нейтрализация Ca(OH)₂ + HCl', species:['Ca(OH)₂','HCl','CaCl₂','H₂O'], coeffs:[1,2,1,2], arrowAt:2, cond:'водн.' },
-  { cat:'alkanes', label:'Нейтрализация NaOH + H₂SO₄', species:['NaOH','H₂SO₄','Na₂SO₄','H₂O'], coeffs:[2,1,1,2], arrowAt:2, cond:'водн.' },
+  {cat:'alkanes',label:'Хлорирование метана',species:['CH₄','Cl₂','CH₃Cl','HCl'],coeffs:[1,1,1,1],arrowAt:2,cond:'hν'},
+  {cat:'alkanes',label:'Хлорирование этана',species:['C₂H₆','Cl₂','C₂H₅Cl','HCl'],coeffs:[1,1,1,1],arrowAt:2,cond:'hν'},
+  {cat:'alkanes',label:'Дегидрирование этана',species:['C₂H₆','C₂H₄','H₂'],coeffs:[1,1,1],arrowAt:1,cond:'t°, Ni'},
+  {cat:'alkanes',label:'Дегидрирование пропана',species:['C₃H₈','C₃H₆','H₂'],coeffs:[1,1,1],arrowAt:1,cond:'t°, Ni'},
+  {cat:'alkanes',label:'Крекинг бутана',species:['C₄H₁₀','C₂H₆','C₂H₄'],coeffs:[1,1,1],arrowAt:1,cond:'t°, кат.'},
+  {cat:'alkanes',label:'Пиролиз метана (1500°C)',species:['CH₄','C₂H₂','H₂'],coeffs:[2,1,3],arrowAt:1,cond:'1500°C'},
+  {cat:'alkanes',label:'Пиролиз метана (1000°C)',species:['CH₄','C','H₂'],coeffs:[1,1,2],arrowAt:1,cond:'1000°C'},
+  {cat:'alkenes',label:'Гидрирование этена',species:['C₂H₄','H₂','C₂H₆'],coeffs:[1,1,1],arrowAt:2,cond:'Ni, t°'},
+  {cat:'alkenes',label:'Гидрирование пропена',species:['C₃H₆','H₂','C₃H₈'],coeffs:[1,1,1],arrowAt:2,cond:'Ni, t°'},
+  {cat:'alkenes',label:'Бромирование этена',species:['C₂H₄','Br₂','C₂H₄Br₂'],coeffs:[1,1,1],arrowAt:2,cond:'CCl₄'},
+  {cat:'alkenes',label:'Хлорирование пропена',species:['C₃H₆','Cl₂','C₃H₆Cl₂'],coeffs:[1,1,1],arrowAt:2,cond:'CCl₄'},
+  {cat:'alkenes',label:'Гидрохлорирование этена',species:['C₂H₄','HCl','C₂H₅Cl'],coeffs:[1,1,1],arrowAt:2,cond:'кат.'},
+  {cat:'alkenes',label:'Гидратация этена',species:['C₂H₄','H₂O','C₂H₅OH'],coeffs:[1,1,1],arrowAt:2,cond:'H⁺'},
+  {cat:'alkenes',label:'Гидратация пропена',species:['C₃H₆','H₂O','C₃H₇OH'],coeffs:[1,1,1],arrowAt:2,cond:'H⁺'},
+  {cat:'alkenes',label:'Мягкое окисление этена KMnO₄',species:['C₂H₄','KMnO₄','H₂O','C₂H₆O₂','MnO₂','KOH'],coeffs:[3,2,4,3,2,2],arrowAt:3,cond:'0°C'},
+  {cat:'alkenes',label:'Полимеризация этена',species:['C₂H₄','(C₂H₄)ₙ'],coeffs:[1,1],arrowAt:1,cond:'кат., p, t°'},
+  {cat:'alkynes',label:'Гидрирование ацетилена (полное)',species:['C₂H₂','H₂','C₂H₆'],coeffs:[1,2,1],arrowAt:2,cond:'Ni, t°'},
+  {cat:'alkynes',label:'Гидрирование ацетилена (частичное)',species:['C₂H₂','H₂','C₂H₄'],coeffs:[1,1,1],arrowAt:2,cond:'Ni, t°'},
+  {cat:'alkynes',label:'Гидрохлорирование ацетилена',species:['C₂H₂','HCl','C₂H₃Cl'],coeffs:[1,1,1],arrowAt:2,cond:'кат.'},
+  {cat:'alkynes',label:'Гидратация ацетилена (Кучеров)',species:['C₂H₂','H₂O','CH₃CHO'],coeffs:[1,1,1],arrowAt:2,cond:'Hg²⁺, H⁺'},
+  {cat:'alkynes',label:'Тримеризация ацетилена',species:['C₂H₂','C₆H₆'],coeffs:[3,1],arrowAt:1,cond:'Cакт, 600°C'},
+  {cat:'alkynes',label:'Димеризация ацетилена',species:['C₂H₂','C₄H₄'],coeffs:[2,1],arrowAt:1,cond:'CuCl, NH₄Cl'},
+  {cat:'arenes',label:'Нитрование бензола',species:['C₆H₆','HNO₃','C₆H₅NO₂','H₂O'],coeffs:[1,1,1,1],arrowAt:2,cond:'H₂SO₄'},
+  {cat:'arenes',label:'Хлорирование бензола',species:['C₆H₆','Cl₂','C₆H₅Cl','HCl'],coeffs:[1,1,1,1],arrowAt:2,cond:'FeCl₃'},
+  {cat:'arenes',label:'Алкилирование бензола',species:['C₆H₆','C₂H₅Cl','C₆H₅C₂H₅','HCl'],coeffs:[1,1,1,1],arrowAt:2,cond:'AlCl₃'},
+  {cat:'arenes',label:'Гидрирование бензола',species:['C₆H₆','H₂','C₆H₁₂'],coeffs:[1,3,1],arrowAt:2,cond:'Ni, t°, p'},
+  {cat:'arenes',label:'Окисление толуола KMnO₄',species:['C₆H₅CH₃','KMnO₄','H₂SO₄','C₆H₅COOH','MnSO₄','K₂SO₄','H₂O'],coeffs:[5,6,9,5,6,3,14],arrowAt:3,cond:'H⁺, t°'},
+  {cat:'alcohols',label:'Дегидратация этанола',species:['C₂H₅OH','C₂H₄','H₂O'],coeffs:[1,1,1],arrowAt:1,cond:'H₂SO₄, 170°C'},
+  {cat:'alcohols',label:'Дегидратация пропанола-1',species:['C₃H₇OH','C₃H₆','H₂O'],coeffs:[1,1,1],arrowAt:1,cond:'H₂SO₄, 170°C'},
+  {cat:'alcohols',label:'Межмол. дегидратация этанола',species:['C₂H₅OH','C₂H₅OC₂H₅','H₂O'],coeffs:[2,1,1],arrowAt:1,cond:'H₂SO₄, 140°C'},
+  {cat:'alcohols',label:'Окисление этанола CuO',species:['C₂H₅OH','CuO','CH₃CHO','Cu','H₂O'],coeffs:[1,1,1,1,1],arrowAt:2,cond:'CuO, t°'},
+  {cat:'alcohols',label:'Окисление метанола CuO',species:['CH₃OH','CuO','HCHO','Cu','H₂O'],coeffs:[1,1,1,1,1],arrowAt:2,cond:'CuO, t°'},
+  {cat:'alcohols',label:'Окисление этанола K₂Cr₂O₇',species:['C₂H₅OH','K₂Cr₂O₇','H₂SO₄','CH₃COOH','Cr₂(SO₄)₃','K₂SO₄','H₂O'],coeffs:[3,2,8,3,2,2,11],arrowAt:3,cond:'H⁺, t°'},
+  {cat:'alcohols',label:'Взаимод. натрия с этанолом',species:['C₂H₅OH','Na','C₂H₅ONa','H₂'],coeffs:[2,2,2,1],arrowAt:2,cond:'t°'},
+  {cat:'alcohols',label:'Взаимод. натрия с фенолом',species:['C₆H₅OH','Na','C₆H₅ONa','H₂'],coeffs:[2,2,2,1],arrowAt:2,cond:'t°'},
+  {cat:'aldehydes',label:'Серебряное зеркало (этаналь)',species:['CH₃CHO','Ag₂O','CH₃COOH','Ag'],coeffs:[1,1,1,2],arrowAt:2,cond:'NH₃, t°'},
+  {cat:'aldehydes',label:'Серебряное зеркало (формальдегид)',species:['HCHO','Ag₂O','CO₂','H₂O','Ag'],coeffs:[1,2,1,1,4],arrowAt:2,cond:'NH₃, t°'},
+  {cat:'aldehydes',label:'Окисление этаналя Cu(OH)₂',species:['CH₃CHO','Cu(OH)₂','CH₃COOH','Cu₂O','H₂O'],coeffs:[1,2,1,1,2],arrowAt:2,cond:'t°'},
+  {cat:'aldehydes',label:'Восстановление этаналя',species:['CH₃CHO','H₂','C₂H₅OH'],coeffs:[1,1,1],arrowAt:2,cond:'Ni, t°'},
+  {cat:'aldehydes',label:'Восстановление формальдегида',species:['HCHO','H₂','CH₃OH'],coeffs:[1,1,1],arrowAt:2,cond:'Ni, t°'},
+  {cat:'aldehydes',label:'Окисление метаналя KMnO₄',species:['HCHO','KMnO₄','H₂SO₄','CO₂','MnSO₄','K₂SO₄','H₂O'],coeffs:[5,2,3,5,2,1,8],arrowAt:3,cond:'H⁺, t°'},
+  {cat:'ketones',label:'Восстановление ацетона',species:['CH₃COCH₃','H₂','CH₃CH(OH)CH₃'],coeffs:[1,1,1],arrowAt:2,cond:'Ni, t°'},
+  {cat:'ketones',label:'Восстановление бутанона',species:['C₂H₅COCH₃','H₂','C₂H₅CH(OH)CH₃'],coeffs:[1,1,1],arrowAt:2,cond:'Ni, t°'},
+  {cat:'acids',label:'Уксусная кислота + NaOH',species:['CH₃COOH','NaOH','CH₃COONa','H₂O'],coeffs:[1,1,1,1],arrowAt:2,cond:'водн.'},
+  {cat:'acids',label:'Уксусная кислота + Na₂CO₃',species:['CH₃COOH','Na₂CO₃','CH₃COONa','CO₂','H₂O'],coeffs:[2,1,2,1,1],arrowAt:2,cond:'водн.'},
+  {cat:'acids',label:'Уксусная кислота + Mg',species:['CH₃COOH','Mg','(CH₃COO)₂Mg','H₂'],coeffs:[2,1,1,1],arrowAt:2,cond:'t°'},
+  {cat:'acids',label:'Уксусная кислота + этанол',species:['CH₃COOH','C₂H₅OH','CH₃COOC₂H₅','H₂O'],coeffs:[1,1,1,1],arrowAt:2,cond:'H₂SO₄, t°'},
+  {cat:'amines',label:'Метиламин + HCl',species:['CH₃NH₂','HCl','CH₃NH₃Cl'],coeffs:[1,1,1],arrowAt:2,cond:'водн.'},
+  {cat:'amines',label:'Анилин + HCl',species:['C₆H₅NH₂','HCl','C₆H₅NH₃Cl'],coeffs:[1,1,1],arrowAt:2,cond:'водн.'},
+  {cat:'amines',label:'Алкилирование аммиака',species:['NH₃','CH₃Cl','CH₃NH₂','HCl'],coeffs:[1,1,1,1],arrowAt:2,cond:'t°'},
+  {cat:'amines',label:'Восстановление нитробензола',species:['C₆H₅NO₂','H₂','C₆H₅NH₂','H₂O'],coeffs:[1,3,1,2],arrowAt:2,cond:'Ni, t°'},
+  {cat:'aminoacids',label:'Глицин + NaOH',species:['NH₂CH₂COOH','NaOH','NH₂CH₂COONa','H₂O'],coeffs:[1,1,1,1],arrowAt:2,cond:'водн.'},
+  {cat:'aminoacids',label:'Глицин + HCl',species:['NH₂CH₂COOH','HCl','ClNH₃CH₂COOH'],coeffs:[1,1,1],arrowAt:2,cond:'водн.'},
+  {cat:'halides',label:'Гидролиз хлорметана',species:['CH₃Cl','NaOH','CH₃OH','NaCl'],coeffs:[1,1,1,1],arrowAt:2,cond:'водн.'},
+  {cat:'halides',label:'Дегидрогалогенирование хлорэтана',species:['C₂H₅Cl','KOH','C₂H₄','KCl','H₂O'],coeffs:[1,1,1,1,1],arrowAt:2,cond:'спирт, t°'},
+  {cat:'halides',label:'Хлорметан + Na (Вюрц)',species:['CH₃Cl','Na','C₂H₆','NaCl'],coeffs:[2,2,1,2],arrowAt:2,cond:'t°'},
+  {cat:'alkanes',label:'Горение угля',species:['C','O₂','CO₂'],coeffs:[1,1,1],arrowAt:2,cond:'t°'},
+  {cat:'alkanes',label:'Горение серы',species:['S','O₂','SO₂'],coeffs:[1,1,1],arrowAt:2,cond:'t°'},
+  {cat:'alkanes',label:'Горение фосфора',species:['P','O₂','P₂O₅'],coeffs:[4,5,2],arrowAt:2,cond:'t°'},
+  {cat:'alkanes',label:'Горение магния',species:['Mg','O₂','MgO'],coeffs:[2,1,2],arrowAt:2,cond:'t°'},
+  {cat:'alkanes',label:'Горение железа',species:['Fe','O₂','Fe₂O₃'],coeffs:[4,3,2],arrowAt:2,cond:'t°'},
+  {cat:'alkanes',label:'Горение натрия',species:['Na','O₂','Na₂O'],coeffs:[4,1,2],arrowAt:2,cond:'t°'},
+  {cat:'alkanes',label:'Разложение перекиси',species:['H₂O₂','H₂O','O₂'],coeffs:[2,2,1],arrowAt:1,cond:'MnO₂'},
+  {cat:'alkanes',label:'Разложение CaCO₃',species:['CaCO₃','CaO','CO₂'],coeffs:[1,1,1],arrowAt:1,cond:'t°'},
+  {cat:'alkanes',label:'Разложение KClO₃',species:['KClO₃','KCl','O₂'],coeffs:[2,2,3],arrowAt:1,cond:'MnO₂, t°'},
+  {cat:'alkanes',label:'Zn + HCl',species:['Zn','HCl','ZnCl₂','H₂'],coeffs:[1,2,1,1],arrowAt:2,cond:'водн.'},
+  {cat:'alkanes',label:'Al + HCl',species:['Al','HCl','AlCl₃','H₂'],coeffs:[2,6,2,3],arrowAt:2,cond:'водн.'},
+  {cat:'alkanes',label:'Алюминотермия',species:['Al','Fe₂O₃','Al₂O₃','Fe'],coeffs:[2,1,1,2],arrowAt:2,cond:'t°'},
+  {cat:'alkanes',label:'Нейтрализация NaOH+HCl',species:['NaOH','HCl','NaCl','H₂O'],coeffs:[1,1,1,1],arrowAt:2,cond:'водн.'},
+  {cat:'alkanes',label:'Нейтрализация Ca(OH)₂+HCl',species:['Ca(OH)₂','HCl','CaCl₂','H₂O'],coeffs:[1,2,1,2],arrowAt:2,cond:'водн.'},
+  {cat:'alkanes',label:'Нейтрализация NaOH+H₂SO₄',species:['NaOH','H₂SO₄','Na₂SO₄','H₂O'],coeffs:[2,1,1,2],arrowAt:2,cond:'водн.'},
 ];
 HARDCODE_REACTIONS.forEach(r => {
   REACTIONS.push({
@@ -851,43 +927,43 @@ HARDCODE_REACTIONS.forEach(r => {
 });
 
 const DRAWING_REACTIONS = [
-  { cat:'alkanes', label:'Реакция Вюрца (хлорметан)', reactants:'2 CH₃Cl + 2Na', smiles:'CC', productName:'этан' },
-  { cat:'alkanes', label:'Реакция Вюрца (хлорэтан)', reactants:'2 C₂H₅Cl + 2Na', smiles:'CCCC', productName:'бутан' },
-  { cat:'alkanes', label:'Хлорирование метана', reactants:'CH₄ + Cl₂ (hν)', smiles:'CCl', productName:'хлорметан' },
-  { cat:'alkanes', label:'Дегидрирование этана', reactants:'C₂H₆ (t°, Ni)', smiles:'C=C', productName:'этен' },
-  { cat:'alkanes', label:'Изомеризация бутана', reactants:'н-бутан (AlCl₃, t°)', smiles:'CC(C)C', productName:'2-метилпропан' },
-  { cat:'alkenes', label:'Гидратация этена', reactants:'CH₂=CH₂ + H₂O (H⁺)', smiles:'CCO', productName:'этанол' },
-  { cat:'alkenes', label:'Гидратация пропена (Марковников)', reactants:'CH₃-CH=CH₂ + H₂O (H⁺)', smiles:'CC(O)C', productName:'пропанол-2' },
-  { cat:'alkenes', label:'Гидрирование этена', reactants:'CH₂=CH₂ + H₂ (Ni)', smiles:'CC', productName:'этан' },
-  { cat:'alkenes', label:'Бромирование этена', reactants:'CH₂=CH₂ + Br₂ (CCl₄)', smiles:'BrCCBr', productName:'1,2-дибромэтан' },
-  { cat:'alkenes', label:'Гидрохлорирование пропена', reactants:'CH₃-CH=CH₂ + HCl', smiles:'CC(Cl)C', productName:'2-хлорпропан' },
-  { cat:'alkenes', label:'Мягкое окисление этена', reactants:'CH₂=CH₂ + [O] + H₂O (KMnO₄, 0°C)', smiles:'OCCO', productName:'этандиол-1,2' },
-  { cat:'alkenes', label:'Полимеризация этена', reactants:'n CH₂=CH₂ (кат.)', smiles:'C=C', productName:'полиэтилен' },
-  { cat:'alkynes', label:'Гидратация ацетилена (Кучеров)', reactants:'HC≡CH + H₂O (Hg²⁺, H⁺)', smiles:'CC=O', productName:'этаналь' },
-  { cat:'alkynes', label:'Гидрирование ацетилена (полное)', reactants:'HC≡CH + 2H₂ (Ni)', smiles:'CC', productName:'этан' },
-  { cat:'alkynes', label:'Гидрирование ацетилена (частичное)', reactants:'HC≡CH + H₂ (Ni)', smiles:'C=C', productName:'этен' },
-  { cat:'alkynes', label:'Тримеризация ацетилена', reactants:'3 HC≡CH (Cакт, 600°C)', smiles:'c1ccccc1', productName:'бензол' },
-  { cat:'alkynes', label:'Гидрохлорирование ацетилена', reactants:'HC≡CH + HCl', smiles:'ClC=C', productName:'хлорэтен' },
-  { cat:'arenes', label:'Хлорирование бензола', reactants:'C₆H₆ + Cl₂ (FeCl₃)', smiles:'Clc1ccccc1', productName:'хлорбензол' },
-  { cat:'arenes', label:'Нитрование бензола', reactants:'C₆H₆ + HNO₃ (H₂SO₄)', smiles:'O=[N+]([O-])c1ccccc1', productName:'нитробензол' },
-  { cat:'arenes', label:'Алкилирование бензола', reactants:'C₆H₆ + CH₃Cl (AlCl₃)', smiles:'Cc1ccccc1', productName:'толуол' },
-  { cat:'arenes', label:'Гидрирование бензола', reactants:'C₆H₆ + 3H₂ (Ni, t°, p)', smiles:'C1CCCCC1', productName:'циклогексан' },
-  { cat:'arenes', label:'Окисление толуола', reactants:'C₆H₅CH₃ + KMnO₄ (H⁺)', smiles:'O=C(O)c1ccccc1', productName:'бензойная кислота' },
-  { cat:'alcohols', label:'Дегидратация этанола', reactants:'C₂H₅OH (H₂SO₄, 170°C)', smiles:'C=C', productName:'этен' },
-  { cat:'alcohols', label:'Дегидратация пропанола-1', reactants:'C₃H₇OH (H₂SO₄, 170°C)', smiles:'CC=C', productName:'пропен' },
-  { cat:'alcohols', label:'Окисление этанола (мягкое)', reactants:'C₂H₅OH + CuO (t°)', smiles:'CC=O', productName:'этаналь' },
-  { cat:'alcohols', label:'Окисление этанола (жёсткое)', reactants:'C₂H₅OH + KMnO₄ (H⁺)', smiles:'CC(=O)O', productName:'этановая кислота' },
-  { cat:'alcohols', label:'Окисление метанола', reactants:'CH₃OH + CuO (t°)', smiles:'C=O', productName:'метаналь' },
-  { cat:'aldehydes', label:'Серебряное зеркало (этаналь)', reactants:'CH₃CHO + Ag₂O (NH₃)', smiles:'CC(=O)O', productName:'этановая кислота' },
-  { cat:'aldehydes', label:'Окисление этаналя Cu(OH)₂', reactants:'CH₃CHO + 2Cu(OH)₂ (t°)', smiles:'CC(=O)O', productName:'этановая кислота' },
-  { cat:'aldehydes', label:'Восстановление этаналя', reactants:'CH₃CHO + H₂ (Ni)', smiles:'CCO', productName:'этанол' },
-  { cat:'ketones', label:'Восстановление пропанона', reactants:'CH₃COCH₃ + H₂ (Ni)', smiles:'CC(O)C', productName:'пропанол-2' },
-  { cat:'esters', label:'Этерификация (этанол + уксусная)', reactants:'C₂H₅OH + CH₃COOH (H₂SO₄)', smiles:'CCOC(=O)C', productName:'этилэтаноат' },
-  { cat:'esters', label:'Этерификация (метанол + уксусная)', reactants:'CH₃OH + CH₃COOH (H₂SO₄)', smiles:'COC(=O)C', productName:'метилэтаноат' },
-  { cat:'amines', label:'Алкилирование аммиака', reactants:'NH₃ + CH₃Cl', smiles:'CN', productName:'метиламин' },
-  { cat:'amines', label:'Восстановление нитробензола', reactants:'C₆H₅NO₂ + 3H₂ (Ni)', smiles:'Nc1ccccc1', productName:'анилин' },
-  { cat:'halides', label:'Дегидрогалогенирование хлорэтана', reactants:'C₂H₅Cl + KOH (спирт)', smiles:'C=C', productName:'этен' },
-  { cat:'halides', label:'Щелочной гидролиз хлорметана', reactants:'CH₃Cl + NaOH (водн.)', smiles:'CO', productName:'метанол' },
+  {cat:'alkanes',label:'Реакция Вюрца (хлорметан)',reactants:'2 CH₃Cl + 2Na',smiles:'CC',productName:'этан'},
+  {cat:'alkanes',label:'Реакция Вюрца (хлорэтан)',reactants:'2 C₂H₅Cl + 2Na',smiles:'CCCC',productName:'бутан'},
+  {cat:'alkanes',label:'Хлорирование метана',reactants:'CH₄ + Cl₂ (hν)',smiles:'CCl',productName:'хлорметан'},
+  {cat:'alkanes',label:'Дегидрирование этана',reactants:'C₂H₆ (t°, Ni)',smiles:'C=C',productName:'этен'},
+  {cat:'alkanes',label:'Изомеризация бутана',reactants:'н-бутан (AlCl₃, t°)',smiles:'CC(C)C',productName:'2-метилпропан'},
+  {cat:'alkenes',label:'Гидратация этена',reactants:'CH₂=CH₂ + H₂O (H⁺)',smiles:'CCO',productName:'этанол'},
+  {cat:'alkenes',label:'Гидратация пропена (Марковников)',reactants:'CH₃-CH=CH₂ + H₂O (H⁺)',smiles:'CC(O)C',productName:'пропанол-2'},
+  {cat:'alkenes',label:'Гидрирование этена',reactants:'CH₂=CH₂ + H₂ (Ni)',smiles:'CC',productName:'этан'},
+  {cat:'alkenes',label:'Бромирование этена',reactants:'CH₂=CH₂ + Br₂ (CCl₄)',smiles:'BrCCBr',productName:'1,2-дибромэтан'},
+  {cat:'alkenes',label:'Гидрохлорирование пропена',reactants:'CH₃-CH=CH₂ + HCl',smiles:'CC(Cl)C',productName:'2-хлорпропан'},
+  {cat:'alkenes',label:'Мягкое окисление этена',reactants:'CH₂=CH₂ + [O] + H₂O (KMnO₄, 0°C)',smiles:'OCCO',productName:'этандиол-1,2'},
+  {cat:'alkenes',label:'Полимеризация этена',reactants:'n CH₂=CH₂ (кат.)',smiles:'C=C',productName:'полиэтилен'},
+  {cat:'alkynes',label:'Гидратация ацетилена (Кучеров)',reactants:'HC≡CH + H₂O (Hg²⁺, H⁺)',smiles:'CC=O',productName:'этаналь'},
+  {cat:'alkynes',label:'Гидрирование ацетилена (полное)',reactants:'HC≡CH + 2H₂ (Ni)',smiles:'CC',productName:'этан'},
+  {cat:'alkynes',label:'Гидрирование ацетилена (частичное)',reactants:'HC≡CH + H₂ (Ni)',smiles:'C=C',productName:'этен'},
+  {cat:'alkynes',label:'Тримеризация ацетилена',reactants:'3 HC≡CH (Cакт, 600°C)',smiles:'c1ccccc1',productName:'бензол'},
+  {cat:'alkynes',label:'Гидрохлорирование ацетилена',reactants:'HC≡CH + HCl',smiles:'ClC=C',productName:'хлорэтен'},
+  {cat:'arenes',label:'Хлорирование бензола',reactants:'C₆H₆ + Cl₂ (FeCl₃)',smiles:'Clc1ccccc1',productName:'хлорбензол'},
+  {cat:'arenes',label:'Нитрование бензола',reactants:'C₆H₆ + HNO₃ (H₂SO₄)',smiles:'O=[N+]([O-])c1ccccc1',productName:'нитробензол'},
+  {cat:'arenes',label:'Алкилирование бензола',reactants:'C₆H₆ + CH₃Cl (AlCl₃)',smiles:'Cc1ccccc1',productName:'толуол'},
+  {cat:'arenes',label:'Гидрирование бензола',reactants:'C₆H₆ + 3H₂ (Ni, t°, p)',smiles:'C1CCCCC1',productName:'циклогексан'},
+  {cat:'arenes',label:'Окисление толуола',reactants:'C₆H₅CH₃ + KMnO₄ (H⁺)',smiles:'O=C(O)c1ccccc1',productName:'бензойная кислота'},
+  {cat:'alcohols',label:'Дегидратация этанола',reactants:'C₂H₅OH (H₂SO₄, 170°C)',smiles:'C=C',productName:'этен'},
+  {cat:'alcohols',label:'Дегидратация пропанола-1',reactants:'C₃H₇OH (H₂SO₄, 170°C)',smiles:'CC=C',productName:'пропен'},
+  {cat:'alcohols',label:'Окисление этанола (мягкое)',reactants:'C₂H₅OH + CuO (t°)',smiles:'CC=O',productName:'этаналь'},
+  {cat:'alcohols',label:'Окисление этанола (жёсткое)',reactants:'C₂H₅OH + KMnO₄ (H⁺)',smiles:'CC(=O)O',productName:'этановая кислота'},
+  {cat:'alcohols',label:'Окисление метанола',reactants:'CH₃OH + CuO (t°)',smiles:'C=O',productName:'метаналь'},
+  {cat:'aldehydes',label:'Серебряное зеркало (этаналь)',reactants:'CH₃CHO + Ag₂O (NH₃)',smiles:'CC(=O)O',productName:'этановая кислота'},
+  {cat:'aldehydes',label:'Окисление этаналя Cu(OH)₂',reactants:'CH₃CHO + 2Cu(OH)₂ (t°)',smiles:'CC(=O)O',productName:'этановая кислота'},
+  {cat:'aldehydes',label:'Восстановление этаналя',reactants:'CH₃CHO + H₂ (Ni)',smiles:'CCO',productName:'этанол'},
+  {cat:'ketones',label:'Восстановление пропанона',reactants:'CH₃COCH₃ + H₂ (Ni)',smiles:'CC(O)C',productName:'пропанол-2'},
+  {cat:'esters',label:'Этерификация (этанол+уксусная)',reactants:'C₂H₅OH + CH₃COOH (H₂SO₄)',smiles:'CCOC(=O)C',productName:'этилэтаноат'},
+  {cat:'esters',label:'Этерификация (метанол+уксусная)',reactants:'CH₃OH + CH₃COOH (H₂SO₄)',smiles:'COC(=O)C',productName:'метилэтаноат'},
+  {cat:'amines',label:'Алкилирование аммиака',reactants:'NH₃ + CH₃Cl',smiles:'CN',productName:'метиламин'},
+  {cat:'amines',label:'Восстановление нитробензола',reactants:'C₆H₅NO₂ + 3H₂ (Ni)',smiles:'Nc1ccccc1',productName:'анилин'},
+  {cat:'halides',label:'Дегидрогалогенирование хлорэтана',reactants:'C₂H₅Cl + KOH (спирт)',smiles:'C=C',productName:'этен'},
+  {cat:'halides',label:'Щелочной гидролиз хлорметана',reactants:'CH₃Cl + NaOH (водн.)',smiles:'CO',productName:'метанол'},
 ];
 DRAWING_REACTIONS.forEach(r => {
   REACTIONS.push({
@@ -897,12 +973,171 @@ DRAWING_REACTIONS.forEach(r => {
   });
 });
 
-/* Дистракторы для режима «Условия» */
 const CONDITION_DISTRACTORS = [
-  'Ni, t°', 'H⁺', 'H₂SO₄, 170°C', 'H₂SO₄, 140°C', 'Hg²⁺, H⁺',
-  'hν', 'FeCl₃', 'AlCl₃', 'H₂SO₄', 'CuO, t°', 'MnO₂, t°', 'Cакт, 600°C',
-  'H₂SO₄, t°', 'спирт, t°', 'водн.', '0°C', 'CCl₄', 'NH₃, t°',
+  'Ni, t°','H⁺','H₂SO₄, 170°C','H₂SO₄, 140°C','Hg²⁺, H⁺',
+  'hν','FeCl₃','AlCl₃','H₂SO₄','CuO, t°','MnO₂, t°','Cакт, 600°C',
+  'H₂SO₄, t°','спирт, t°','водн.','0°C','CCl₄','NH₃, t°',
 ];
+
+/* ============================================================
+   ФОРМУЛА → SMILES
+   ============================================================ */
+function formulaToSmiles(text) {
+  if (!text || typeof text !== 'string') return null;
+  let s = text.trim().toUpperCase();
+  s = s.replace(/\s+/g, '');
+  s = s.replace(/≡/g, '#').replace(/==/g, '=').replace(/[–—]/g, '-');
+  if (!s) return null;
+
+  // Простые случаи
+  const simple = {
+    'CH4': 'C', 'CH3': 'C', 'CH2': 'C', 'CH': 'C',
+    'OH': 'O', 'NH2': 'N', 'CL': 'Cl', 'BR': 'Br', 'F': 'F', 'I': 'I',
+    'HCOOH': 'C(=O)O', 'HCHO': 'C=O', 'COOH': 'C(=O)O', 'CHO': 'C=O', 'CO': 'C(=O)',
+    'NO2': '[N+](=O)[O-]', 'SO3H': 'S(=O)(=O)O',
+    'CH2OH': 'CO', 'CH2NH2': 'CN', 'O': 'O', 'S': 'S',
+  };
+  if (simple[s]) return simple[s];
+
+  const tokens = tokenizeFormula(s);
+  if (!tokens || !tokens.length) return null;
+  try {
+    const result = parseSmilesTokens(tokens);
+    if (!result || !result.smiles) return null;
+    return result.smiles;
+  } catch(e) {
+    console.warn('parse error', e);
+    return null;
+  }
+}
+
+function tokenizeFormula(s) {
+  const tokens = [];
+  let i = 0;
+  while (i < s.length) {
+    const c = s[i];
+    if (c === '-' || c === '=' || c === '#') {
+      tokens.push({type: 'bond', value: c});
+      i++;
+    } else if (c === '(' || c === ')') {
+      tokens.push({type: 'paren', value: c});
+      i++;
+    } else if (/\d/.test(c) && tokens.length && tokens[tokens.length-1].type === 'paren' && tokens[tokens.length-1].value === ')') {
+      // коэффициент после закрывающей скобки
+      let num = '';
+      while (i < s.length && /\d/.test(s[i])) { num += s[i]; i++; }
+      tokens.push({type: 'coeff', value: parseInt(num, 10)});
+    } else {
+      let j = i;
+      let depth = 0;
+      while (j < s.length) {
+        const ch = s[j];
+        if (ch === '(') depth++;
+        else if (ch === ')') depth--;
+        else if (depth === 0 && '-=#()'.includes(ch)) break;
+        j++;
+      }
+      if (j === i) return null;
+      tokens.push({type: 'fragment', value: s.slice(i, j)});
+      i = j;
+    }
+  }
+  return tokens;
+}
+
+function parseFragmentToSmiles(frag) {
+  const simple = {
+    'CH4': 'C', 'CH3': 'C', 'CH2': 'C', 'CH': 'C', 'C': 'C',
+    'OH': 'O', 'NH2': 'N', 'SH': 'S', 'CL': 'Cl', 'BR': 'Br',
+    'F': 'F', 'I': 'I', 'O': 'O', 'S': 'S',
+    'COOH': 'C(=O)O', 'HCOOH': 'C(=O)O',
+    'CHO': 'C=O', 'HCHO': 'C=O',
+    'CO': 'C(=O)',
+    'NO2': '[N+](=O)[O-]',
+    'SO3H': 'S(=O)(=O)O',
+    'CH2OH': 'CO', 'CH2NH2': 'CN',
+  };
+  return simple[frag] || null;
+}
+
+function parseSmilesTokens(tokens) {
+  let smiles = '';
+  let i = 0;
+  let pendingBond = '';
+  while (i < tokens.length) {
+    const t = tokens[i];
+    if (t.type === 'bond') {
+      pendingBond = t.value === '=' ? '=' : t.value === '#' ? '#' : '';
+      i++;
+      continue;
+    }
+    if (t.type === 'paren') {
+      if (t.value === ')') {
+        i++;
+        return {smiles, consumed: i};
+      }
+      // открывающая скобка — рекурсия
+      const inner = parseSmilesTokens(tokens.slice(i + 1));
+      let branch = '(' + inner.smiles + ')';
+      // проверить коэффициент
+      let coeff = 1;
+      const after = i + 1 + inner.consumed;
+      if (after < tokens.length && tokens[after].type === 'coeff') {
+        coeff = tokens[after].value;
+        i = after + 1;
+      } else {
+        i = after;
+      }
+      for (let k = 0; k < coeff; k++) {
+        smiles += branch;
+      }
+      continue;
+    }
+    if (t.type === 'fragment') {
+      const fragSmiles = parseFragmentToSmiles(t.value);
+      if (!fragSmiles) throw new Error('Unknown: ' + t.value);
+      smiles += pendingBond + fragSmiles;
+      pendingBond = '';
+      i++;
+      continue;
+    }
+    i++;
+  }
+  return {smiles, consumed: i};
+}
+
+/* ============================================================
+   SMILES → CANVAS (растр)
+   ============================================================ */
+function drawSmilesOnCanvas(smiles, ctx, x, y, w, h) {
+  return new Promise((resolve, reject) => {
+    try {
+      const tree = SmilesDrawer.parse(smiles);
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+      const drawer = new SmilesDrawer.SvgDrawer({
+        width: w, height: h, padding: 10, bondThickness: 2,
+      });
+      drawer.draw(tree, svg, 'light');
+      const svgStr = new XMLSerializer().serializeToString(svg);
+      const blob = new Blob([svgStr], {type: 'image/svg+xml;charset=utf-8'});
+      const url = URL.createObjectURL(blob);
+      const img = new Image();
+      img.onload = () => {
+        ctx.drawImage(img, x, y, w, h);
+        URL.revokeObjectURL(url);
+        resolve();
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        reject(new Error('Image load failed'));
+      };
+      img.src = url;
+    } catch(e) {
+      reject(e);
+    }
+  });
+}
 
 /* ============================================================
    СОСТОЯНИЕ
@@ -912,6 +1147,7 @@ const state = {
   selectedClasses: new Set(CLASSES.map(c => c.key)),
   currentCompound: null, answerShown: false,
   tool: 'pen', strokes: [], undoStack: [], isDrawing: false, lastPoint: null,
+  formulaMode: false, gridMode: false,
   balanceTask: null, balanceChecked: false,
   namingTask: null, namingChecked: false,
   conditionsTask: null, conditionsAnswered: false,
@@ -922,9 +1158,6 @@ const notesState = {
   tool: 'pen', strokes: [], undoStack: [], isDrawing: false, lastPoint: null,
 };
 
-/* ============================================================
-   DOM + CANVAS
-   ============================================================ */
 const drawCanvas = $('draw');
 const overlay = $('overlay');
 const drawCtx = drawCanvas.getContext('2d');
@@ -952,26 +1185,21 @@ CLASSES.forEach(c => {
   $('chips').appendChild(btn);
 });
 $('toggle-all').addEventListener('click', () => {
-  const allSelected = state.selectedClasses.size === CLASSES.length;
-  if (allSelected) {
+  const all = state.selectedClasses.size === CLASSES.length;
+  if (all) {
     state.selectedClasses.clear();
     state.selectedClasses.add(CLASSES[0].key);
-    document.querySelectorAll('#chips .chip').forEach((b, i) =>
-      b.classList.toggle('active', i === 0));
+    document.querySelectorAll('#chips .chip').forEach((b, i) => b.classList.toggle('active', i === 0));
   } else {
     CLASSES.forEach(c => state.selectedClasses.add(c.key));
     document.querySelectorAll('#chips .chip').forEach(b => b.classList.add('active'));
   }
 });
 
-/* ============================================================
-   ВЫБОР РЕЖИМА
-   ============================================================ */
 document.querySelectorAll('.mode-card').forEach(card => {
   card.addEventListener('click', () => {
     state.mode = card.dataset.mode;
-    document.querySelectorAll('.mode-card').forEach(c =>
-      c.classList.toggle('active', c === card));
+    document.querySelectorAll('.mode-card').forEach(c => c.classList.toggle('active', c === card));
   });
 });
 
@@ -999,8 +1227,7 @@ loadProgress();
    НАВИГАЦИЯ
    ============================================================ */
 function showScreen(id) {
-  document.querySelectorAll('.screen').forEach(s =>
-    s.classList.toggle('active', s.id === id));
+  document.querySelectorAll('.screen').forEach(s => s.classList.toggle('active', s.id === id));
 }
 
 $('start-btn').addEventListener('click', () => {
@@ -1031,6 +1258,17 @@ $('back-btn').addEventListener('click', () => showScreen('menu-screen'));
 $('balance-back-btn').addEventListener('click', () => showScreen('menu-screen'));
 $('naming-back-btn').addEventListener('click', () => showScreen('menu-screen'));
 $('conditions-back-btn').addEventListener('click', () => showScreen('menu-screen'));
+$('history-back-btn').addEventListener('click', () => showScreen('menu-screen'));
+
+$('history-btn').addEventListener('click', () => {
+  renderHistory();
+  showScreen('history-screen');
+});
+$('history-clear').addEventListener('click', () => {
+  if (!confirm('Очистить всю историю?')) return;
+  clearHistoryStore();
+  renderHistory();
+});
 
 /* ============================================================
    TRAIN: CANVAS
@@ -1043,7 +1281,14 @@ function setupCanvas() {
   const oldW = drawCanvas.width / dpr, oldH = drawCanvas.height / dpr;
   if (oldW && oldH && (oldW !== w || oldH !== h)) {
     const sx = w / oldW, sy = h / oldH;
-    const scale = arr => { for (const s of arr) { for (const p of s.points) { p.x *= sx; p.y *= sy; } s.width *= Math.sqrt(sx * sy); } };
+    const scale = arr => {
+      for (const s of arr) {
+        if (s.points) for (const p of s.points) { p.x *= sx; p.y *= sy; }
+        if (s.from) { s.from.x *= sx; s.from.y *= sy; }
+        if (s.to) { s.to.x *= sx; s.to.y *= sy; }
+        s.width *= Math.sqrt(sx * sy);
+      }
+    };
     scale(state.strokes);
     for (const snap of state.undoStack) scale(snap);
   }
@@ -1059,6 +1304,11 @@ function getPos(e) { const r = drawCanvas.getBoundingClientRect(); return { x: e
 function deepClone(obj) { if (typeof structuredClone === 'function') return structuredClone(obj); return JSON.parse(JSON.stringify(obj)); }
 function snapshot(arr, undoStack) { undoStack.push(deepClone(arr)); if (undoStack.length > 50) undoStack.shift(); }
 
+const GRID_STEP = 24;
+function snapToGrid(p) {
+  return { x: Math.round(p.x / GRID_STEP) * GRID_STEP, y: Math.round(p.y / GRID_STEP) * GRID_STEP };
+}
+
 function startDraw(e) {
   if (!state.currentCompound) return;
   e.preventDefault();
@@ -1067,33 +1317,50 @@ function startDraw(e) {
   state.isDrawing = true;
   const p = getPos(e);
   state.lastPoint = p;
-  state.strokes.push({ tool: state.tool, width: state.tool === 'eraser' ? 24 : 3, color: '#222', points: [p] });
-  drawCtx.save();
-  drawCtx.globalCompositeOperation = state.tool === 'eraser' ? 'destination-out' : 'source-over';
-  drawCtx.fillStyle = '#222';
-  drawCtx.beginPath();
-  drawCtx.arc(p.x, p.y, (state.tool === 'eraser' ? 24 : 3) / 2, 0, Math.PI * 2);
-  drawCtx.fill();
-  drawCtx.restore();
+  if (state.gridMode && state.tool === 'pen') {
+    const snapped = snapToGrid(p);
+    state.strokes.push({ tool: 'pen', width: 3, color: '#222', grid: true, from: snapped, to: snapped });
+    redraw();
+  } else {
+    state.strokes.push({ tool: state.tool, width: state.tool === 'eraser' ? 24 : 3, color: '#222', points: [p] });
+    drawCtx.save();
+    drawCtx.globalCompositeOperation = state.tool === 'eraser' ? 'destination-out' : 'source-over';
+    drawCtx.fillStyle = '#222';
+    drawCtx.beginPath();
+    drawCtx.arc(p.x, p.y, (state.tool === 'eraser' ? 24 : 3) / 2, 0, Math.PI * 2);
+    drawCtx.fill();
+    drawCtx.restore();
+  }
 }
+
 function moveDraw(e) {
   if (!state.isDrawing) return;
   e.preventDefault();
   const p = getPos(e);
   const stroke = state.strokes[state.strokes.length - 1];
-  stroke.points.push(p);
-  drawCtx.save();
-  drawCtx.globalCompositeOperation = stroke.tool === 'eraser' ? 'destination-out' : 'source-over';
-  drawCtx.strokeStyle = stroke.color;
-  drawCtx.lineWidth = stroke.width;
-  drawCtx.beginPath();
-  drawCtx.moveTo(state.lastPoint.x, state.lastPoint.y);
-  drawCtx.lineTo(p.x, p.y);
-  drawCtx.stroke();
-  drawCtx.restore();
-  state.lastPoint = p;
+  if (stroke.grid) {
+    stroke.to = snapToGrid(p);
+    redraw();
+  } else {
+    stroke.points.push(p);
+    drawCtx.save();
+    drawCtx.globalCompositeOperation = stroke.tool === 'eraser' ? 'destination-out' : 'source-over';
+    drawCtx.strokeStyle = stroke.color;
+    drawCtx.lineWidth = stroke.width;
+    drawCtx.beginPath();
+    drawCtx.moveTo(state.lastPoint.x, state.lastPoint.y);
+    drawCtx.lineTo(p.x, p.y);
+    drawCtx.stroke();
+    drawCtx.restore();
+    state.lastPoint = p;
+  }
 }
-function endDraw() { state.isDrawing = false; state.lastPoint = null; }
+
+function endDraw() {
+  state.isDrawing = false;
+  state.lastPoint = null;
+}
+
 drawCanvas.addEventListener('pointerdown', startDraw);
 drawCanvas.addEventListener('pointermove', moveDraw);
 drawCanvas.addEventListener('pointerup', endDraw);
@@ -1105,14 +1372,35 @@ function redraw() {
   drawCtx.setTransform(1, 0, 0, 1, 0, 0);
   drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
   drawCtx.restore();
+  const dpr = window.devicePixelRatio || 1;
+  const W = drawCanvas.width / dpr, H = drawCanvas.height / dpr;
+  // сетка
+  if (state.gridMode) {
+    drawCtx.save();
+    drawCtx.fillStyle = '#e2e8f0';
+    for (let x = 0; x <= W; x += GRID_STEP) {
+      for (let y = 0; y <= H; y += GRID_STEP) {
+        drawCtx.beginPath();
+        drawCtx.arc(x, y, 1.2, 0, Math.PI * 2);
+        drawCtx.fill();
+      }
+    }
+    drawCtx.restore();
+  }
   for (const stroke of state.strokes) {
     drawCtx.save();
     drawCtx.globalCompositeOperation = stroke.tool === 'eraser' ? 'destination-out' : 'source-over';
     drawCtx.strokeStyle = stroke.color;
     drawCtx.fillStyle = stroke.color;
     drawCtx.lineWidth = stroke.width;
-    drawCtx.lineCap = 'round'; drawCtx.lineJoin = 'round';
-    if (stroke.points.length === 1) {
+    drawCtx.lineCap = 'round';
+    drawCtx.lineJoin = 'round';
+    if (stroke.grid) {
+      drawCtx.beginPath();
+      drawCtx.moveTo(stroke.from.x, stroke.from.y);
+      drawCtx.lineTo(stroke.to.x, stroke.to.y);
+      drawCtx.stroke();
+    } else if (stroke.points.length === 1) {
       const p = stroke.points[0];
       drawCtx.beginPath();
       drawCtx.arc(p.x, p.y, stroke.width / 2, 0, Math.PI * 2);
@@ -1140,9 +1428,64 @@ $('clear-btn').addEventListener('click', () => {
 document.querySelectorAll('.tool-btn[data-tool]').forEach(btn => {
   btn.addEventListener('click', () => {
     state.tool = btn.dataset.tool;
-    document.querySelectorAll('.tool-btn[data-tool]').forEach(b =>
-      b.classList.toggle('active', b === btn));
+    document.querySelectorAll('.tool-btn[data-tool]').forEach(b => b.classList.toggle('active', b === btn));
   });
+});
+
+/* ============================================================
+   ХОТСВАП: текстовая формула
+   ============================================================ */
+$('toggle-formula-btn').addEventListener('click', () => {
+  state.formulaMode = !state.formulaMode;
+  $('formula-input-wrap').hidden = !state.formulaMode;
+  $('toggle-formula-btn').classList.toggle('active', state.formulaMode);
+  if (state.formulaMode) setTimeout(() => $('formula-input').focus(), 50);
+});
+$('toggle-grid-btn').addEventListener('click', () => {
+  state.gridMode = !state.gridMode;
+  $('toggle-grid-btn').classList.toggle('active', state.gridMode);
+  redraw();
+});
+
+$('formula-draw').addEventListener('click', handleFormulaDraw);
+$('formula-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); handleFormulaDraw(); }
+});
+
+async function handleFormulaDraw() {
+  const text = $('formula-input').value.trim();
+  if (!text) return;
+  const smiles = formulaToSmiles(text);
+  if (!smiles) {
+    $('formula-error').textContent = 'Не удалось разобрать. Примеры: CH3-CH3, CH3-OH, CH3-CHO, CH3-COOH, CH2=CH2';
+    $('formula-error').hidden = false;
+    return;
+  }
+  $('formula-error').hidden = true;
+  const dpr = window.devicePixelRatio || 1;
+  const W = drawCanvas.width / dpr, H = drawCanvas.height / dpr;
+  const size = Math.min(W, H) * 0.8;
+  const x = (W - size) / 2, y = (H - size) / 2;
+  try {
+    await drawSmilesOnCanvas(smiles, drawCtx, x, y, size, size);
+    $('formula-input').value = '';
+    state.undoStack.push(deepClone(state.strokes));
+    if (state.undoStack.length > 50) state.undoStack.shift();
+  } catch(e) {
+    $('formula-error').textContent = 'Ошибка отрисовки.';
+    $('formula-error').hidden = false;
+  }
+}
+
+// Хоткей E (на десктопе)
+window.addEventListener('keydown', e => {
+  if (e.key.toLowerCase() !== 'e') return;
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  if (!trainScreenActive()) return;
+  const tag = document.activeElement?.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+  e.preventDefault();
+  $('toggle-formula-btn').click();
 });
 
 /* ============================================================
@@ -1161,21 +1504,22 @@ function getDrawingPool() {
 function nextTask() {
   const pool = getDrawingPool();
   if (!pool.length) return;
-  let candidate, tries = 0;
-  do { candidate = pool[Math.floor(Math.random() * pool.length)]; tries++; }
-  while (pool.length > 1 && state.currentCompound && candidate.name === state.currentCompound.name && tries < 25);
-  state.currentCompound = candidate;
+  let cand, tries = 0;
+  do { cand = pool[Math.floor(Math.random() * pool.length)]; tries++; }
+  while (pool.length > 1 && state.currentCompound && cand.name === state.currentCompound.name && tries < 25);
+  state.currentCompound = cand;
   state.answerShown = false;
   state.strokes = [];
   state.undoStack = [];
   overlay.innerHTML = '';
   overlay.classList.remove('visible');
-  const isReaction = !!candidate.reactants;
+  $('formula-error').hidden = true;
+  const isReaction = !!cand.reactants;
   $('task-card').classList.toggle('reaction-card', isReaction);
   $('task-label').textContent = isReaction ? 'Нарисуй продукт реакции:' : 'Нарисуй скелетную формулу:';
-  $('task-name').textContent = candidate.name || candidate.label;
+  $('task-name').textContent = cand.name || cand.label;
   const eqEl = $('task-equation');
-  if (isReaction) { eqEl.textContent = `${candidate.reactants} → ?`; eqEl.hidden = false; }
+  if (isReaction) { eqEl.textContent = `${cand.reactants} → ?`; eqEl.hidden = false; }
   else { eqEl.hidden = true; eqEl.textContent = ''; }
   updateActions(); updateHeader(); setupCanvas(); redraw();
 }
@@ -1199,7 +1543,7 @@ function updateActions() {
 function renderOverlay() {
   const c = state.currentCompound;
   if (!c) return;
-  if (typeof SmilesDrawer === 'undefined') { alert('Не удалось загрузить движок визуализации.'); return; }
+  if (typeof SmilesDrawer === 'undefined') { alert('Не удалось загрузить движок.'); return; }
   const w = $('canvas-wrap').clientWidth, h = $('canvas-wrap').clientHeight;
   if (!w || !h) return;
   overlay.innerHTML = '';
@@ -1228,15 +1572,35 @@ $('next-btn').addEventListener('click', nextTask);
 $('correct-btn').addEventListener('click', () => {
   state.correct++; state.total++; state.streak++;
   if (state.streak > state.bestStreak) state.bestStreak = state.streak;
-  saveProgress(); nextTask();
+  saveProgress();
+  const c = state.currentCompound;
+  if (c) saveHistoryItem({
+    mode: 'Рисование',
+    task: c.name || c.label,
+    userAnswer: 'рисунок',
+    correctAnswer: c.productName || c.name,
+    correct: true,
+    timestamp: Date.now(),
+  });
+  nextTask();
 });
 $('wrong-btn').addEventListener('click', () => {
   state.total++; state.streak = 0;
-  saveProgress(); nextTask();
+  saveProgress();
+  const c = state.currentCompound;
+  if (c) saveHistoryItem({
+    mode: 'Рисование',
+    task: c.name || c.label,
+    userAnswer: 'рисунок',
+    correctAnswer: c.productName || c.name,
+    correct: false,
+    timestamp: Date.now(),
+  });
+  nextTask();
 });
 
 /* ============================================================
-   BALANCE: ЗАМЕТКИ
+   BALANCE: заметки
    ============================================================ */
 function setupNotesCanvas() {
   const wrap = $('notes-canvas-wrap');
@@ -1278,12 +1642,12 @@ function notesMoveDraw(e) {
   if (!notesState.isDrawing) return;
   e.preventDefault();
   const p = notesGetPos(e);
-  const stroke = notesState.strokes[notesState.strokes.length - 1];
-  stroke.points.push(p);
+  const s = notesState.strokes[notesState.strokes.length - 1];
+  s.points.push(p);
   notesCtx.save();
-  notesCtx.globalCompositeOperation = stroke.tool === 'eraser' ? 'destination-out' : 'source-over';
-  notesCtx.strokeStyle = stroke.color;
-  notesCtx.lineWidth = stroke.width;
+  notesCtx.globalCompositeOperation = s.tool === 'eraser' ? 'destination-out' : 'source-over';
+  notesCtx.strokeStyle = s.color;
+  notesCtx.lineWidth = s.width;
   notesCtx.beginPath();
   notesCtx.moveTo(notesState.lastPoint.x, notesState.lastPoint.y);
   notesCtx.lineTo(p.x, p.y);
@@ -1303,22 +1667,22 @@ function redrawNotes() {
   notesCtx.setTransform(1, 0, 0, 1, 0, 0);
   notesCtx.clearRect(0, 0, notesCanvas.width, notesCanvas.height);
   notesCtx.restore();
-  for (const stroke of notesState.strokes) {
+  for (const s of notesState.strokes) {
     notesCtx.save();
-    notesCtx.globalCompositeOperation = stroke.tool === 'eraser' ? 'destination-out' : 'source-over';
-    notesCtx.strokeStyle = stroke.color;
-    notesCtx.fillStyle = stroke.color;
-    notesCtx.lineWidth = stroke.width;
+    notesCtx.globalCompositeOperation = s.tool === 'eraser' ? 'destination-out' : 'source-over';
+    notesCtx.strokeStyle = s.color;
+    notesCtx.fillStyle = s.color;
+    notesCtx.lineWidth = s.width;
     notesCtx.lineCap = 'round'; notesCtx.lineJoin = 'round';
-    if (stroke.points.length === 1) {
-      const p = stroke.points[0];
+    if (s.points.length === 1) {
+      const p = s.points[0];
       notesCtx.beginPath();
-      notesCtx.arc(p.x, p.y, stroke.width / 2, 0, Math.PI * 2);
+      notesCtx.arc(p.x, p.y, s.width / 2, 0, Math.PI * 2);
       notesCtx.fill();
     } else {
       notesCtx.beginPath();
-      notesCtx.moveTo(stroke.points[0].x, stroke.points[0].y);
-      for (let i = 1; i < stroke.points.length; i++) notesCtx.lineTo(stroke.points[i].x, stroke.points[i].y);
+      notesCtx.moveTo(s.points[0].x, s.points[0].y);
+      for (let i = 1; i < s.points.length; i++) notesCtx.lineTo(s.points[i].x, s.points[i].y);
       notesCtx.stroke();
     }
     notesCtx.restore();
@@ -1337,22 +1701,21 @@ $('notes-clear-btn').addEventListener('click', () => {
 document.querySelectorAll('.tool-btn[data-note-tool]').forEach(btn => {
   btn.addEventListener('click', () => {
     notesState.tool = btn.dataset.noteTool;
-    document.querySelectorAll('.tool-btn[data-note-tool]').forEach(b =>
-      b.classList.toggle('active', b === btn));
+    document.querySelectorAll('.tool-btn[data-note-tool]').forEach(b => b.classList.toggle('active', b === btn));
   });
 });
 function clearNotesCanvas() { notesState.strokes = []; notesState.undoStack = []; redrawNotes(); }
 $('notes-toggle').addEventListener('click', () => {
   const wrap = $('notes-wrap');
   const btn = $('notes-toggle');
-  const willOpen = wrap.hidden;
-  wrap.hidden = !willOpen;
-  btn.classList.toggle('active', willOpen);
-  if (willOpen) requestAnimationFrame(() => requestAnimationFrame(setupNotesCanvas));
+  const open = wrap.hidden;
+  wrap.hidden = !open;
+  btn.classList.toggle('active', open);
+  if (open) requestAnimationFrame(() => requestAnimationFrame(setupNotesCanvas));
 });
 
 /* ============================================================
-   BALANCE: ЛОГИКА
+   BALANCE: логика
    ============================================================ */
 function getBalancePool() {
   const useAll = state.selectedClasses.has('balance-reactions');
@@ -1367,13 +1730,13 @@ function nextBalanceTask() {
   let pool = getBalancePool();
   if (!pool.length) pool = REACTIONS.filter(r => r.forBalance);
   if (!pool.length) return;
-  let candidate, tries = 0;
-  do { candidate = pool[Math.floor(Math.random() * pool.length)]; tries++; }
-  while (tries < 25 && state.balanceTask && candidate.label === state.balanceTask.label);
-  state.balanceTask = candidate;
+  let cand, tries = 0;
+  do { cand = pool[Math.floor(Math.random() * pool.length)]; tries++; }
+  while (tries < 25 && state.balanceTask && cand.label === state.balanceTask.label);
+  state.balanceTask = cand;
   state.balanceChecked = false;
-  $('balance-name').textContent = candidate.label;
-  renderBalanceEquation(candidate);
+  $('balance-name').textContent = cand.label;
+  renderBalanceEquation(cand);
   const inp = $('balance-input');
   inp.value = ''; inp.className = ''; inp.disabled = false;
   $('balance-check').disabled = false;
@@ -1438,6 +1801,14 @@ function checkBalance() {
   $('balance-input').disabled = true;
   $('balance-check').disabled = true;
   saveProgress();
+  saveHistoryItem({
+    mode: 'Коэффициенты',
+    task: task.label,
+    userAnswer: parsed.join(' '),
+    correctAnswer: correct.join(' '),
+    correct: isCorrect,
+    timestamp: Date.now(),
+  });
   updateBalanceHeader();
 }
 function fillSlots(coeffs, cls) {
@@ -1462,31 +1833,25 @@ $('balance-next').addEventListener('click', nextBalanceTask);
 $('balance-input').addEventListener('keydown', e => { if (e.key === 'Enter') checkBalance(); });
 
 /* ============================================================
-   NAMING: ЛОГИКА
+   NAMING: логика
    ============================================================ */
 const NAMING_SMILES_OVERRIDE = {
-  'C':    '[CH4]',
-  'CC':   '[CH3][CH3]',
-  'C=C':  '[CH2]=[CH2]',
-  'C#C':  '[CH]#[CH]',
-  'CO':   '[CH3][OH]',
-  'C=O':  '[CH2]=O',
+  'C': '[CH4]', 'CC': '[CH3][CH3]', 'C=C': '[CH2]=[CH2]',
+  'C#C': '[CH]#[CH]', 'CO': '[CH3][OH]', 'C=O': '[CH2]=O',
 };
 function getNamingPool() {
   const pool = [];
-  for (const key of state.selectedClasses) {
-    if (COMPOUNDS[key]) pool.push(...COMPOUNDS[key]);
-  }
+  for (const key of state.selectedClasses) if (COMPOUNDS[key]) pool.push(...COMPOUNDS[key]);
   if (!pool.length) for (const k of Object.keys(COMPOUNDS)) pool.push(...COMPOUNDS[k]);
   return pool;
 }
 function nextNamingTask() {
   const pool = getNamingPool();
   if (!pool.length) return;
-  let candidate, tries = 0;
-  do { candidate = pool[Math.floor(Math.random() * pool.length)]; tries++; }
-  while (tries < 25 && state.namingTask && candidate.name === state.namingTask.name);
-  state.namingTask = candidate;
+  let cand, tries = 0;
+  do { cand = pool[Math.floor(Math.random() * pool.length)]; tries++; }
+  while (tries < 25 && state.namingTask && cand.name === state.namingTask.name);
+  state.namingTask = cand;
   state.namingChecked = false;
   const inp = $('naming-input');
   inp.value = ''; inp.className = ''; inp.disabled = false;
@@ -1507,13 +1872,6 @@ function renderNamingSvg() {
   if (!w || !h) return;
   if (typeof SmilesDrawer === 'undefined') {
     svg.innerHTML = '';
-    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    text.setAttribute('x', '50%'); text.setAttribute('y', '50%');
-    text.setAttribute('text-anchor', 'middle');
-    text.setAttribute('fill', '#ef4444');
-    text.setAttribute('font-size', '14');
-    text.textContent = 'Не удалось загрузить движок';
-    svg.appendChild(text);
     return;
   }
   const smiles = NAMING_SMILES_OVERRIDE[c.smiles] || c.smiles;
@@ -1521,16 +1879,16 @@ function renderNamingSvg() {
   SmilesDrawer.parse(smiles, tree => {
     const drawer = new SmilesDrawer.SvgDrawer({ width: w, height: h, padding: 30, bondThickness: 2 });
     drawer.draw(tree, svg, 'light');
-  }, err => { console.error('SmilesDrawer error:', err); svg.innerHTML = ''; });
+  }, err => { console.error(err); svg.innerHTML = ''; });
 }
 function checkNaming() {
   if (!state.namingTask || state.namingChecked) return;
   const task = state.namingTask;
   const input = $('naming-input').value.trim();
-  if (!input) { showNamingFeedback('Введи название соединения.', false); return; }
+  if (!input) { showNamingFeedback('Введи название.', false); return; }
   const userNorm = normalizeName(input);
-  const acceptable = getAcceptableAnswers(task);
-  const isCorrect = acceptable.has(userNorm);
+  const acc = getAcceptableAnswers(task);
+  const isCorrect = acc.has(userNorm);
   state.namingChecked = true;
   state.total++;
   if (isCorrect) {
@@ -1549,6 +1907,14 @@ function checkNaming() {
   $('naming-input').disabled = true;
   $('naming-check').disabled = true;
   saveProgress();
+  saveHistoryItem({
+    mode: 'Название',
+    task: task.name,
+    userAnswer: input,
+    correctAnswer: task.name,
+    correct: isCorrect,
+    timestamp: Date.now(),
+  });
   updateNamingHeader();
 }
 function showNamingFeedback(html, ok) {
@@ -1566,21 +1932,17 @@ $('naming-next').addEventListener('click', nextNamingTask);
 $('naming-input').addEventListener('keydown', e => { if (e.key === 'Enter') checkNaming(); });
 
 /* ============================================================
-   CONDITIONS: ЛОГИКА
+   CONDITIONS: логика
    ============================================================ */
 function hasContentConditions(r) {
-  if (!r.forBalance) return false;
-  if (!r.conditions) return false;
+  if (!r.forBalance || !r.conditions) return false;
   const c = r.conditions.trim();
-  if (!c) return false;
-  if (c === 't°') return false;
-  if (c === 'кат.') return false;
+  if (!c || c === 't°' || c === 'кат.') return false;
   return true;
 }
 function getConditionsPool() {
   const useAll = state.selectedClasses.has('conditions');
-  const cats = [...state.selectedClasses].filter(c =>
-    c !== 'reactions' && c !== 'balance-reactions' && c !== 'conditions');
+  const cats = [...state.selectedClasses].filter(c => c !== 'reactions' && c !== 'balance-reactions' && c !== 'conditions');
   return REACTIONS.filter(r => {
     if (!hasContentConditions(r)) return false;
     if (useAll) return true;
@@ -1595,20 +1957,17 @@ function nextConditionsTask() {
   let pool = getConditionsPool();
   if (!pool.length) pool = REACTIONS.filter(r => hasContentConditions(r));
   if (!pool.length) return;
-  let candidate, tries = 0;
-  do { candidate = pool[Math.floor(Math.random() * pool.length)]; tries++; }
-  while (tries < 25 && state.conditionsTask && candidate.label === state.conditionsTask.label);
-  state.conditionsTask = candidate;
+  let cand, tries = 0;
+  do { cand = pool[Math.floor(Math.random() * pool.length)]; tries++; }
+  while (tries < 25 && state.conditionsTask && cand.label === state.conditionsTask.label);
+  state.conditionsTask = cand;
   state.conditionsAnswered = false;
-
-  $('conditions-label').textContent = candidate.label;
-  renderConditionsEquation(candidate);
-
+  $('conditions-label').textContent = cand.label;
+  renderConditionsEquation(cand);
   const display = $('conditions-display');
   display.textContent = '?';
   display.className = 'condition-display';
-
-  const options = shuffle([candidate.conditions, ...pickConditionDistractors(candidate.conditions, 3)]);
+  const options = shuffle([cand.conditions, ...pickConditionDistractors(cand.conditions, 3)]);
   const grid = $('conditions-options');
   grid.innerHTML = '';
   options.forEach(opt => {
@@ -1616,10 +1975,9 @@ function nextConditionsTask() {
     btn.className = 'option-btn';
     btn.textContent = opt;
     btn.dataset.condition = opt;
-    btn.addEventListener('click', () => handleConditionClick(btn, opt, candidate));
+    btn.addEventListener('click', () => handleConditionClick(btn, opt, cand));
     grid.appendChild(btn);
   });
-
   $('conditions-feedback').hidden = true;
   $('conditions-feedback').className = 'balance-feedback';
   $('conditions-feedback').innerHTML = '';
@@ -1650,14 +2008,11 @@ function renderConditionsEquation(task) {
 function handleConditionClick(btn, condition, task) {
   if (state.conditionsAnswered) return;
   state.conditionsAnswered = true;
-
   document.querySelectorAll('#conditions-options .option-btn').forEach(b => b.disabled = true);
-
   const isCorrect = condition === task.conditions;
   const display = $('conditions-display');
   display.textContent = task.conditions;
   display.classList.add('correct');
-
   state.total++;
   if (isCorrect) {
     btn.classList.add('correct');
@@ -1676,6 +2031,14 @@ function handleConditionClick(btn, condition, task) {
     );
   }
   saveProgress();
+  saveHistoryItem({
+    mode: 'Условия',
+    task: task.label,
+    userAnswer: condition,
+    correctAnswer: task.conditions,
+    correct: isCorrect,
+    timestamp: Date.now(),
+  });
   updateConditionsHeader();
 }
 function showConditionsFeedback(html, ok) {
